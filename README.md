@@ -3,7 +3,7 @@ hcbridge - Software and Hardware Co-Design Acceleration Framework & Toolset
 ==========================================
 
 hcbridge is an open source framework & toolset by software and hardware co-design concept to implement complex algorithm.<br>
-It optimize to large complicated data throughout system with low latency, such as HEVC Encoder.<br>
+It optimize for large complicated data throughout system with low latency, such as HEVC Encoder.<br>
 It is easy to use toolsets, that automatic generate interface code for HW and SW side.<br>
 <br>
 Building
