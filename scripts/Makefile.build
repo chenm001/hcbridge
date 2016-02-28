@@ -1,0 +1,442 @@
+# Copyright (c) 2014 Quanta Research Cambridge, Inc
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+#
+#
+# File: Makefile.build
+#
+
+space := $(eval) $(eval)
+
+V?=0
+ifeq ($(V),0)
+  Q=@
+  BSC_QUIET=-no-show-compiles
+  CONNECTAL_NDK_PARAM="NDK_HOST_ECHO=true"
+  FPGAMAKE_VERBOSE=
+else
+  Q=
+  BSC_QUIET=
+  CONNECTAL_NDK_PARAM=
+  FPGAMAKE_VERBOSE=-v
+endif
+NDK_OBJCOPY=$(shell $(NDKPATH)ndk-which objcopy)
+
+ifeq ($(CONNECTAL_DEBUG),1)
+GDB=gdb
+GDB2=gdb
+else
+GDB= LD_PRELOAD=libSegFault.so SEGFAULT_USE_ALTSTACK=1 SEGFAULT_OUTPUT_NAME=bin/bsimexe-segv-output.txt
+GDB2= LD_PRELOAD=libSegFault.so SEGFAULT_USE_ALTSTACK=1 SEGFAULT_OUTPUT_NAME=bin/bsimexe2-segv-output.txt
+endif
+
+GDB_BSIM= LD_PRELOAD=libSegFault.so SEGFAULT_USE_ALTSTACK=1 SEGFAULT_OUTPUT_NAME=bin/bsim-segv-output.txt
+
+
+BSCVERSION=$(shell bsc -v |grep Compiler | sed -e "s/.*version //" -e "s/ .*//")
+BSCMAJOR=$(shell bsc -v |grep Compiler | sed -e "s/.*version //" -e "s/\..*//")
+ifneq ($(BSCMAJOR), 2013)
+    # S0015: The use of a mkSyncReset may not always result in a reset
+    #        signal being seen on the destination side. Recommend
+    #        replacement with mkAsyncReset.
+    BSCWARNFLAGS += -demote-errors G0066:G0045 -suppress-warnings G0046:G0020:S0015:S0080:S0039:T0127
+else
+    #BSCFLAGS_COMMON += -D ExportUnusedClocksAndResets
+endif
+ifeq ($(BSCVERSION), 2014.07.A)
+    BSCFLAGS_COMMON += -D ClockDefaultParam
+endif
+ifeq ($(BSCMAJOR), 2015)
+    BSCFLAGS_COMMON += -D ClockDefaultParam
+endif
+
+BSCOPTFLAGS= -show-schedule -aggressive-conditions -show-method-bvi
+BSCPATHFLAGS=  -bdir $(DTOP)/obj -vdir $(DTOP)/verilog -simdir $(DTOP)/obj -info-dir $(DTOP)/obj
+BSCFLAGS_COMMON += $(BSCWARNFLAGS) $(BSCOPTFLAGS) $(BSCPATHFLAGS) --wait-for-license
+PROF_FLAGS= #-pg
+export SIM_CXXFLAGS= -I $(TOOLDIR)/cpp -I $(TOOLDIR) -D SIMULATION $(BSVDEFINES) -O $(PROF_FLAGS)
+SIM_CXX_COMMON = $(foreach f, BsimCtrl.cpp BsimDma.cpp sock_utils.c portalPrintf.c XsimTop.cpp poller.cpp transportSocket.c transportHardware.c transportXsim.c portal.c, $(TOOLDIR)/cpp/$f)
+SIM_CXX_LOCAL = $(SIM_CXX_COMMON) $(DTOP)/jni/XsimMsgRequest.c $(DTOP)/jni/XsimMsgIndication.c $(DTOP)/jni/GeneratedCppCallbacks.cpp
+
+ifneq ($(ALTERA),)
+BLUESPEC_VERILOG+=$(BLUESPECDIR)/Verilog.Quartus
+endif
+ifneq ($(XILINX),)
+BLUESPEC_VERILOG+=$(BLUESPECDIR)/Verilog.Vivado
+endif
+BLUESPEC_VERILOG+=$(BLUESPECDIR)/Verilog
+
+ifneq ($(BSVSIM),)
+SIM_CXXFLAGS += -I $(BLUESPECDIR)/VPI
+endif
+
+VIVADO=$(shell which vivado)
+ifneq ($(VIVADO), )
+export VIVADODIR=$(shell dirname $(shell dirname $(VIVADO))))
+VIVADOFLAGS= -notrace
+XVLOGFLAGS =
+endif
+
+MODELSIM=$(shell which vsim)
+ifneq ($(MODELSIM), )
+endif
+
+QUARTUS=$(shell which quartus_sh)
+ifneq ($(QUARTUS), )
+export QUARTUSDIR=$(shell dirname $(shell dirname $(QUARTUS)))
+endif
+
+ifeq ($(USE_BUILDCACHE),1)
+BUILDCACHE=$(shell cd $(TOOLDIR)/..; /bin/pwd)/buildcache/buildcache
+ifeq ("$(BUILDCACHE_CACHEDIR)", "")
+BUILDCACHE_CACHEDIR=$(shell cd $(TOOLDIR)/..; /bin/pwd)/fpgamake-cache
+endif
+endif
+
+ifneq ($(BSC_LM_LICENSE_FILE),)
+RUN_BSC_LM_LICENSE_FILE=LM_LICENSE_FILE=$(BSC_LM_LICENSE_FILE)
+endif
+RUN_BSC = $(RUN_BSC_LM_LICENSE_FILE) BUILDCACHE_CACHEDIR=$(BUILDCACHE_CACHEDIR) $(BUILDCACHE) bsc $(BSC_QUIET) $(BSVDEFINES) $(BSCFLAGS_COMMON) $(BSCFLAGS_PROJECT) $(BSCFLAGS_EXTRA) -p +:$(BSVPATH)
+VFILE=verilog/$(MKTOP).v
+
+all: exe bits extratarget
+
+extratarget::
+# placeholder for variant targets
+
+ifeq ($(CONNECTAL_SHARED),1)
+  ifeq ($(RUNSOURCE2),)
+    exe: connectal.so
+  else
+    exe: connectal.so ubuntu.exe2
+  endif
+else
+    ifneq ($(OS),android)
+      ifeq ($(RUNSOURCE2),)
+        exe: ubuntu.exe
+      else
+        exe: ubuntu.exe ubuntu.exe2
+      endif
+    else # android
+      ifeq ($(CONNECTAL_DEBUG),1)
+        exe: android.debug.exe
+      else
+        exe: android.exe
+      endif
+    endif # android
+endif # !shared
+
+ubuntu.exe: prepare_bin_target
+	@echo "ubuntu.exe"
+	$(Q)cd jni; $(MAKE) --no-print-directory -f Ubuntu.mk ubuntu.exe
+	@cp -v jni/ubuntu.exe bin
+	@echo "ubuntu.exe done"
+
+ubuntu.exe2: prepare_bin_target
+	$(Q)cd jni; $(MAKE) --no-print-directory -f Ubuntu.mk ubuntu.exe2
+	@cp -v jni/ubuntu.exe2 bin
+
+connectal.so: prepare_bin_target
+	$(Q)cd jni; $(MAKE) --no-print-directory -f Ubuntu.mk connectal.so
+	@cp -v jni/connectal.so bin
+ifneq ($(OS),android)
+	$(Q)[ ! -f bin/mkTop.bin.gz ] || objcopy --remove-section fpgadata bin/connectal.so
+	$(Q)[ ! -f bin/mkTop.bin.gz ] || objcopy --add-section fpgadata=bin/mkTop.bin.gz bin/connectal.so
+else
+	$(Q)[ ! -f bin/mkTop.xdevcfg.bin.gz ] || $(NDK_OBJCOPY) --remove-section fpgadata bin/connectal.so
+	$(Q)[ ! -f bin/mkTop.xdevcfg.bin.gz ] || $(NDK_OBJCOPY) --add-section fpgadata=bin/mkTop.xdevcfg.bin.gz bin/connectal.so
+endif
+
+ifneq ($(BOARD),bluesim)
+ifneq ($(OS),android)
+program:
+	fpgajtag bin/mkTop.bin.gz
+	sleep 1
+
+programflash:
+	vivado -mode batch -source $(dir $(FPGAMAKE))/tcl/program_bpi_flash.tcl
+endif
+endif
+
+ifeq ($(CONNECTAL_NOHARDWARE),1)
+bits:
+else
+ifeq ($(BOARD),bluesim)
+bits: bsim
+else
+ifeq ($(BOARD),xsim)
+bits: xsim
+else
+ifeq ($(BOARD),vsim)
+bits: vsim
+else
+ifeq ($(BOARD),verilator)
+bits: vlsim
+else
+bits: hw/mkTop.bit prepare_bin_target
+ifeq ($(OS),android)
+	@echo "zipping android"
+	$(TOOLDIR)/scripts/reorderbytes.py hw/mkTop.bin bin/mkTop.xdevcfg.bin
+	gzip -f bin/mkTop.xdevcfg.bin
+	$(Q)[ ! -f bin/android.exe ] || $(NDK_OBJCOPY) --remove-section fpgadata bin/android.exe
+	$(Q)[ ! -f bin/android.exe ] || $(NDK_OBJCOPY) --add-section fpgadata=bin/mkTop.xdevcfg.bin.gz bin/android.exe
+	$(Q)[ ! -f bin/connectal.so ] || $(NDK_OBJCOPY) --remove-section fpgadata bin/connectal.so
+	$(Q)[ ! -f bin/connectal.so ] || $(NDK_OBJCOPY) --add-section fpgadata=bin/mkTop.xdevcfg.bin.gz bin/connectal.so
+else ifneq ($(XILINX),)
+	@echo "zipping xilinx"
+	gzip -c hw/mkTop.bin > bin/mkTop.bin.gz
+	$(Q)[ ! -f bin/ubuntu.exe ] || objcopy --remove-section fpgadata bin/ubuntu.exe
+	$(Q)[ ! -f bin/ubuntu.exe ] || objcopy --add-section fpgadata=bin/mkTop.bin.gz bin/ubuntu.exe
+	$(Q)[ ! -f bin/connectal.so ] || objcopy --remove-section fpgadata bin/connectal.so
+	$(Q)[ ! -f bin/connectal.so ] || objcopy --add-section fpgadata=bin/mkTop.bin.gz bin/connectal.so
+	if [ -f Impl/TopDown/top-post-route.dcp ]; then cp -f Impl/TopDown/top-post-route.dcp bin; fi
+	if [ -f Impl/TopDown/top-post-route-timing-summary.rpt ]; then $(TOOLDIR)/scripts/check-timing.py Impl/TopDown/top-post-route-timing-summary.rpt; fi
+	if [ -f Impl/TopDown/top-post-route-timing-summary.txt ]; then $(TOOLDIR)/scripts/check-timing.py Impl/TopDown/top-post-route-timing-summary.txt; fi
+else
+	@echo "not zipping xilinx"
+endif # XILINX
+ifneq ($(ALTERA),)
+	gzip -c $(MKTOP).sof > bin/$(MKTOP).sof.gz
+	$(Q)[ ! -f bin/ubuntu.exe ] || objcopy --remove-section fpgadata bin/ubuntu.exe
+	$(Q)[ ! -f bin/ubuntu.exe ] || objcopy --add-section fpgadata=bin/$(MKTOP).sof.gz bin/ubuntu.exe
+	$(Q)[ ! -f bin/connectal.so ] || objcopy --remove-section fpgadata bin/connectal.so
+	$(Q)[ ! -f bin/connectal.so ] || objcopy --add-section fpgadata=bin/$(MKTOP).sof.gz bin/connectal.so
+endif # ALTERA
+
+endif # android
+endif # verilator
+endif # xsim
+endif # vsim
+
+android.exe: prepare_bin_target
+	+ndk-build $(CONNECTAL_NDK_PARAM)
+	@cp -v libs/armeabi/android.exe bin
+	$(Q)[ ! -f bin/mkTop.xdevcfg.bin.gz ] || $(NDK_OBJCOPY) --remove-section fpgadata bin/android.exe
+	$(Q)[ ! -f bin/mkTop.xdevcfg.bin.gz ] || $(NDK_OBJCOPY) --add-section fpgadata=bin/mkTop.xdevcfg.bin.gz bin/android.exe
+
+android.debug.exe: prepare_bin_target
+	+ndk-build $(CONNECTAL_NDK_PARAM) -B V=1 NDK_DEBUG=1
+	@cp -v libs/armeabi/android.exe bin
+	$(Q)[ ! -f bin/mkTop.xdevcfg.bin.gz ] || $(NDK_OBJCOPY) --remove-section fpgadata bin/android.exe
+	$(Q)[ ! -f bin/mkTop.xdevcfg.bin.gz ] || $(NDK_OBJCOPY) --add-section fpgadata=bin/mkTop.xdevcfg.bin.gz bin/android.exe
+
+run:
+ifeq ($(CONNECTAL_SHARED),1)
+	$(RUN_BSC_LM_LICENSE_FILE) $(GDB) ./bin/ubuntu.exe2 $(RUN_ARGS); retcode=$$?; exit $$retcode
+else
+ifeq ($(BOARD),bluesim)
+  ifeq ($(BSVSIM),)
+    ifeq ($(RUNSOURCE2),)
+	$(RUN_BSC_LM_LICENSE_FILE) $(GDB) ./bin/ubuntu.exe $(RUN_ARGS); retcode=$$?; exit $$retcode
+    else
+	$(RUN_BSC_LM_LICENSE_FILE) $(GDB2) ./bin/ubuntu.exe2& bsim2pid=$$!; $(GDB) ./bin/ubuntu.exe $(RUN_ARGS); retcode=$$?; kill $$bsim2pid; exit $$retcode
+    endif
+  else
+    ifeq ($(RUNSOURCE2),)
+	$(Q)cd $(DTOP)/bin; $(RUN_BSC_LM_LICENSE_FILE) $(GDB) ./ubuntu.exe $(RUN_ARGS); retcode=$$?; exit $$retcode
+    else
+	$(Q)cd $(DTOP)/bin; $(RUN_BSC_LM_LICENSE_FILE) $(GDB2) ./ubuntu.exe2& bsim2pid=$$!; $(GDB) ./ubuntu.exe $(RUN_ARGS); retcode=$$?; kill $$bsim2pid; exit $$retcode
+    endif
+  endif
+else
+  ifeq ($(BOARD),xsim)
+    ifeq ($(RUNSOURCE2),)
+	$(GDB) ./bin/ubuntu.exe $(RUN_ARGS); retcode=$$?; exit $$retcode
+    else
+	$(GDB2) ./bin/ubuntu.exe2& xsim2pid=$$!; $(GDB) ./bin/ubuntu.exe $(RUN_ARGS); retcode=$$?; $$xsim2pid; exit $$retcode
+    endif
+  else
+    ifeq ($(BOARD),verilator)
+	$(GDB) ./bin/ubuntu.exe $(RUN_ARGS); retcode=$$?; exit $$retcode
+    else
+    ifeq ($(OS),android)
+	$(TOOLDIR)/scripts/run.android bin/android.exe $(RUN_ARGS)
+    else
+    ifeq ($(BOARD), vsim)
+	$(GDB) ./bin/ubuntu.exe $(RUN_ARGS); retcode=$$?; exit $$retcode
+    else
+ifeq ($(XILINX),"1")
+	$(TOOLDIR)/scripts/run.pcietest bin/ubuntu.exe $(RUN_ARGS)
+endif
+ifeq ($(ALTERA),"1")
+	$(TOOLDIR)/scripts/run.pcietest.altera bin/mk*.sof bin/ubuntu.exe $(RUN_ARGS)
+endif
+endif
+    endif # vsim
+    endif # android
+    endif # verilator
+  endif # xsim
+endif # bluesim
+endif # connectal_shared
+
+ifneq ($(VIVADO), )
+VIVADODIR=$(realpath $(shell dirname $(VIVADO))/..)
+XSC_CFLAGS= -Wa,-W -fPIC -m64  -I"$(VIVADODIR)/data/xsim/include" -DSYSTEM_VERILOG -DBOARD_xsim -I$(TOOLDIR)/cpp -I$(TOOLDIR) -Ijni
+
+XSIM_GENERATED_CFILES = XsimMsgIndication XsimMsgRequest GeneratedCppCallbacks
+XSIM_CFILES = transportSocket transportHardware transportXsim XsimTop poller sock_utils portalPrintf portal BsimDma BsimCtrl
+XSIM_OBJECTS = $(foreach c, $(XSIM_CFILES), xsim.dir/xsc/$(c).lnx64.o ) $(foreach c, $(XSIM_GENERATED_CFILES), xsim.dir/xsc/$(c).lnx64.o)
+
+xsim.dir/xsc/%.lnx64.o: $(TOOLDIR)/cpp/%.c
+	mkdir -p xsim.dir/xsc
+	gcc -c $(XSC_CFLAGS) -O1 -o xsim.dir/xsc/$(*).lnx64.o $<
+xsim.dir/xsc/%.lnx64.o: $(TOOLDIR)/cpp/%.cpp
+	mkdir -p xsim.dir/xsc
+	gcc -c $(XSC_CFLAGS) -O1 -o xsim.dir/xsc/$(*).lnx64.o $<
+xsim.dir/xsc/%.lnx64.o: jni/%.c
+	mkdir -p xsim.dir/xsc
+	gcc -c $(XSC_CFLAGS) -O1 -o xsim.dir/xsc/$(*).lnx64.o $<
+xsim.dir/xsc/%.lnx64.o: jni/%.cpp
+	mkdir -p xsim.dir/xsc
+	gcc -c $(XSC_CFLAGS) -O1 -o xsim.dir/xsc/$(*).lnx64.o $<
+
+XVLOGDEFINES = $(subst -D,-d,$(BSVDEFINES))
+
+SVLOG = $(addprefix -svlog $(TOOLDIR)/verilog/, xsimtop.sv XsimDmaReadWrite.sv XsimLink.sv XsimSink.sv XsimSource.sv)
+
+xsim: verilog $(XSIM_OBJECTS)
+	xvlog $(XVLOGFLAGS) $(XVLOGDEFINES) $(VERILOG_PATH:%=--sourcelibdir %) --sourcelibext .v verilog/*.v
+	#xvlog $(XVLOGDEFINES) --sv $(TOOLDIR)/verilog/*.sv ## not needed because these all get passed to xelab because they use DPI
+	#xsc -v -cc gcc -compile $(SOURCES)
+	xsc -cc gcc -link $(XSIM_OBJECTS) -o xsimtop
+	xelab -timescale 1ns/1ps --stats $(XVLOGDEFINES) -cc gcc $(SVLOG) --dpiheader XsimTop.h --debug wave -L unisim -L unifast -L unimacro work.xsimtop -sv_lib xsimtop
+endif #VIVADO
+
+vlsim: $(DTOP)/obj_dir/vlsim
+
+VERILATOR_ARGS?= -O3 -CFLAGS "-I$(TOOLDIR)/cpp -I$(DTOP)/jni -O $(PROF_FLAGS)" -LDFLAGS "-O $(PROF_FLAGS)" --profile-cfuncs
+VERILATOR_ARGS += $(VERILATOR_PROJECT_ARGS)
+
+$(DTOP)/obj_dir/vlsim.mk: $(DTOP)/bin/libconnectal-sim.so verilog
+	verilator -o vlsim --prefix vlsim $(VERILATOR_ARGS) -cc -exe $(DTOP)/verilog/mkXsimTop.v -DMainClockPeriod=4 -DDerivedClockPeriod=4 --top-module mkXsimTop $(VERILOG_PATH:%=-y %) -Wno-fatal $(TOOLDIR)/cpp/verilatortop.cpp $(DTOP)/bin/libconnectal-sim.so -LDFLAGS -lpthread
+
+$(DTOP)/obj_dir/vlsim: $(DTOP)/obj_dir/vlsim.mk
+	+$(MAKE) -C obj_dir -f vlsim.mk
+	cp obj_dir/vlsim bin/vlsim
+
+ifneq ($(MODELSIM), )
+MODELSIMDIR=$(realpath $(shell dirname $(MODELSIM))/..)
+VSIM_CFLAGS= -Wa,-W -fPIC -m64 -I"$(MODELSIMDIR)/include" -DSYSTEM_VERILOG -DBOARD_vsim -I$(TOOLDIR)/cpp -I$(TOOLDIR) -Ijni
+VSIM_GENERATED_CFILES = XsimMsgIndication XsimMsgRequest GeneratedCppCallbacks
+VSIM_CFILES = transportSocket transportHardware transportXsim XsimTop poller sock_utils portalPrintf portal BsimDma BsimCtrl
+VSIM_OBJECTS = $(foreach c, $(VSIM_CFILES), vsim.dir/xsc/$(c).lnx64.o ) $(foreach c, $(VSIM_GENERATED_CFILES), vsim.dir/xsc/$(c).lnx64.o)
+
+vsim.dir/xsc/%.lnx64.o: $(TOOLDIR)/cpp/%.c
+	mkdir -p vsim.dir/xsc
+	gcc -c $(VSIM_CFLAGS) -O1 -o vsim.dir/xsc/$(*).lnx64.o $<
+vsim.dir/xsc/%.lnx64.o: $(TOOLDIR)/cpp/%.cpp
+	mkdir -p vsim.dir/xsc
+	gcc -c $(VSIM_CFLAGS) -O1 -o vsim.dir/xsc/$(*).lnx64.o $<
+vsim.dir/xsc/%.lnx64.o: jni/%.c
+	mkdir -p vsim.dir/xsc
+	gcc -c $(VSIM_CFLAGS) -O1 -o vsim.dir/xsc/$(*).lnx64.o $<
+vsim.dir/xsc/%.lnx64.o: jni/%.cpp
+	mkdir -p vsim.dir/xsc
+	gcc -c $(VSIM_CFLAGS) -O1 -o vsim.dir/xsc/$(*).lnx64.o $<
+
+VSIM_DEFINES = $(subst -D ,+define+,$(BSVDEFINES))
+VSIM_SV = $(addprefix -sv $(TOOLDIR)/verilog/, xsimtop.sv XsimDmaReadWrite.sv XsimLink.sv XsimSink.sv XsimSource.sv)
+SV_SEARCH_PATH = $(addprefix -y , $(VERILOG_PATH))
+SV_SEARCH_PATH += $(addprefix -y , $(addsuffix /submodules, $(VERILOG_PATH)))
+SV_SEARCH_PATH += $(addprefix -y , $(addsuffix /submodules/mentor, $(VERILOG_PATH)))
+VSIM_LIBRARY_FILES += $(addprefix -sv $(QUARTUSDIR)/eda/sim_lib/, altera_lnsim.sv)
+VSIM_LIBRARY_FILES += $(addprefix -v $(QUARTUSDIR)/eda/sim_lib/, altera_mf.v 220model.v sgate.v altera_primitives.v mentor/stratixv_atoms_ncrypt.v stratixv_atoms.v mentor/stratixv_hssi_atoms_ncrypt.v stratixv_hssi_atoms.v)
+VSIM_MISC_FILES = $(addprefix -sv , $(MODELSIM_FILES))
+
+vsim: verilog $(VSIM_OBJECTS)
+	rm -rf work
+	vlib work
+	vlog -timescale 1ns/1ps -dpiheader XsimTop.h $(VSIM_DEFINES) $(VSIM_SV) $(VSIM_LIBRARY_FILES) $(VSIM_MISC_FILES) +libext+.sv+.v $(SV_SEARCH_PATH) $(VERILOG_PATH:%=-y %) -sv verilog/*.v
+	g++ -O -g -I$(DTOP)/jni -shared -fPIC -g -o xsimtop.so $(VSIM_OBJECTS)
+endif #MODELSIM
+
+obj/%.bvi: verilog/%.v
+	$(TOOLDIR)/scripts/extract-bvi-schedule.py -d obj verilog/$(*).v
+
+define BSV_BO_RULE
+$(1): $(2) $(3) $(4)
+	$(Q)mkdir -p $(DTOP)/obj verilog
+	@echo BSV_BO  [$(2)]
+	$(Q)MAKEFLAGS="" $(RUN_BSC) -verilog -remove-dollar $(2)
+endef
+
+define BSV_V_RULE
+$(2): $(3) $(4) $(5)
+	$(Q)mkdir -p $(DTOP)/obj verilog
+	@echo BSCVERILOG [$(1)]
+	cd generatedbsv; MAKEFLAGS="" $(RUN_BSC) -verilog -remove-dollar -g $(1) $(3)
+	$(Q)sed -i 's|// On .*|// timestamp removed|' verilog/*.v
+	$(Q)sed -i 's|  wire.*PROBE[,;]|(* mark_debug="true" *)&|' verilog/*.v 
+	$(Q)sed -i 's|  wire.*PROBE_VALID[,;]|(* mark_debug="true" *)&|' verilog/*.v 
+endef
+
+include obj/Makefile
+
+$(VFILE): $(addprefix obj/, $(patsubst %.bsv, %.bo, $(notdir $(TOPBSVFILE))))
+	$(Q)mkdir -p verilog $(DTOP)/obj
+	@echo BSCVERILOG [$(VFILE)]
+	$(Q)cd generatedbsv; MAKEFLAGS="" $(RUN_BSC) -verilog -remove-dollar -g $(MKTOP) $(TOPBSVFILE)
+	$(Q)sed -i 's|// On .*|// timestamp removed|' verilog/*.v
+	$(Q)sed -i 's|  wire.*PROBE[,;]|(* mark_debug="true" *)&|' verilog/*.v 
+	$(Q)sed -i 's|  wire.*PROBE_VALID[,;]|(* mark_debug="true" *)&|' verilog/*.v 
+
+obj/Makefile: $(OBJMAKEFILE_DEP) syntax.timestamp
+	@mkdir -p obj
+	$(TOOLDIR)/scripts/bsvdepend.py -o obj/Makefile $(BSVDEFINES) --bsvpath=$(BSVPATH) --all $(TOPBSVFILE)
+
+$(DTOP)/bin/libconnectal-sim.so: $(SIM_CXX_COMMON) $(SIM_CXX_PROJECT) prepare_bin_target
+	$(Q)mkdir -p $(DTOP)/bin
+	g++ -O -g -I$(DTOP)/jni -shared -fpic $(SIM_CXXFLAGS) -g -o $(DTOP)/bin/libconnectal-sim.so $(SIM_CXX_LOCAL) $(SIM_CXX_PROJECT)
+
+bsim: prepare_bin_target $(BSVSIM:%=verilog) $(DTOP)/bin/libconnectal-sim.so
+	$(Q)mkdir -p $(DTOP)/obj verilog
+	@echo BSCBSIM [$(DTOP)]
+ifeq ($(BSVSIM),)
+	$(Q)cd generatedbsv; MAKEFLAGS="" $(RUN_BSC) -D SIMULATION -sim -u -g $(MKTOP) $(TOPBSVFILE)
+	$(Q)cd generatedbsv; MAKEFLAGS="" $(RUN_BSC) $(SIM_CXXFLAGS) -L $(DTOP)/bin  -l connectal-sim -sim -e $(MKTOP) -o bsim $(DTOP)/obj/*.ba
+	$(Q)cp -v generatedbsv/bsim* bin
+else # generate in run/execute directory, Thirdpart simulate generate intermedia files
+	$(Q)cd generatedbsv; MAKEFLAGS="" $(RUN_BSC) -D SIMULATION -verilog -u -g $(MKTOP) $(TOPBSVFILE)
+	cd $(DTOP)/bin; MAKEFLAGS="" $(RUN_BSC) $(SIM_CXXFLAGS) -L $(DTOP)/bin  -l connectal-sim -vsim $(BSVSIM) -vsearch $(DTOP):$(DTOP)/verilog:$(subst $(space),:,$(VERILOG_PATH)) -e $(MKTOP) -o bsim $(DTOP)/obj/*.ba
+endif # BSVSIM
+
+syntax.timestamp: $(BSVFILES)
+	@#$syntax.py uses environment variables: V INTERFACES BSVDEFINES_LIST DTOP DUT_NAME
+	$(Q)BSVPATH=$(BSVPATH) $(TOOLDIR)/scripts/syntax.py $(BSVFILES)
+	$(Q)touch syntax.timestamp
+
+verilog: $(VFILE) syntax.timestamp
+	@echo "verilog"
+
+lint: $(VFILE)
+	verilator --error-limit 200 --lint-only -Igeneratedbsv -Igeneratedbsv/source $(VFILE)
+
+prepare_bin_target: syntax.timestamp
+	@echo "prepare_bin_target"
+	@mkdir -p bin jni
+	@(git rev-parse HEAD 2> /dev/null || echo not a git repo) > bin/githash
+	@(git diff 2>/dev/null || echo not a git repo) | gzip -c > bin/gitdiff.patch.gz
+	@md5sum $(TOOLDIR)/generated/cpp/*.c | grep -v mod.c | sed -f $(TOOLDIR)/scripts/driver_signature.sed >jni/driver_signature_file.h
+
+hwclean:
+	rm -fr obj hw vivado*.jou vivado*.log fsm_encoding.os .Xil
+
+clean: hwclean
+	rm -fr verilog
+
