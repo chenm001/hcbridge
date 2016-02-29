@@ -34,10 +34,10 @@ endtypeclass
 instance RegToWriteOnly#(a);
    function WriteOnly#(a) regToWriteOnly(Reg#(a) x);
       return (interface WriteOnly;
-		 method Action _write(a v);
-		    x._write(v);
-		 endmethod
-	      endinterface);
+                 method Action _write(a v);
+                    x._write(v);
+                 endmethod
+              endinterface);
    endfunction
 endinstance
 
@@ -121,28 +121,28 @@ endinterface
 
 function Put#(t) null_put();
    return (interface Put;
-	      method Action put(t x) if (False);
-		 noAction;
-	      endmethod
-	   endinterface);
+              method Action put(t x) if (False);
+                 noAction;
+              endmethod
+           endinterface);
 endfunction
 
 function Get#(t) null_get();
    return (interface Get;
-	      method ActionValue#(t) get() if (False);
-		 return ?;
-	      endmethod
-	   endinterface);
+              method ActionValue#(t) get() if (False);
+                 return ?;
+              endmethod
+           endinterface);
 endfunction
       
 function  Axi3Master#(addrWidth, busWidth, idWidth) null_axi_master();
    return (interface Axi3Master;
-	      interface Get req_ar = null_get;
-	      interface Put resp_read = null_put;
-	      interface Get req_aw = null_get;
-	      interface Get resp_write = null_get;
-	      interface Put resp_b = null_put;
-	   endinterface);
+              interface Get req_ar = null_get;
+              interface Put resp_read = null_put;
+              interface Get req_aw = null_get;
+              interface Get resp_write = null_get;
+              interface Put resp_b = null_put;
+           endinterface);
 endfunction
 
 instance Connectable#(Axi3Master#(addrWidth, busWidth,idWidth), Axi3Slave#(addrWidth, busWidth,idWidth));

@@ -36,7 +36,7 @@ endinterface
 
 module mkBRAMServers#(BRAM_Configure bramConfig)(BRAMServers#(numServers, addr, data))
    provisos (Bits#(addr,asz),
-	     Bits#(data,dsz));
+             Bits#(data,dsz));
    let memorySize = bramConfig.memorySize == 0 ? 2**valueOf(asz) : bramConfig.memorySize;
    BRAM_DUAL_PORT#(addr,data) bram <- mkBRAMCore2(memorySize, True); // latency 2
    Vector#(2, FIFOF#(data)) responseFifo <- replicateM(mkSizedFIFOF(2));
@@ -54,25 +54,25 @@ module mkBRAMServers#(BRAM_Configure bramConfig)(BRAMServers#(numServers, addr, 
    
    for (Integer i = 0; i < 2; i = i + 1) begin
       rule bramRule;
-	 // zeroth stage
-	 let d0 = data0[i];
-	 data1[i] <= d0;
+         // zeroth stage
+         let d0 = data0[i];
+         data1[i] <= d0;
 
-	 // first stage // address register
-	 let d1 = data1[i];
-	 data2[i] <= d1;
+         // first stage // address register
+         let d1 = data1[i];
+         data2[i] <= d1;
 
-	 // second stage
-	 let d2 = data2[i];
-	 if (d2 matches tagged Valid .tpl) begin
-	    match { .write, .data } = tpl;
-	    if (!write)
-	       data = portsel(i).read();
-	    if (responseFifo[i].notFull())
-	       responseFifo[i].enq(data);
-	    else
-	       $display("Error: responseFifo is unexpectedly full");
-	 end
+         // second stage
+         let d2 = data2[i];
+         if (d2 matches tagged Valid .tpl) begin
+            match { .write, .data } = tpl;
+            if (!write)
+               data = portsel(i).read();
+            if (responseFifo[i].notFull())
+               responseFifo[i].enq(data);
+            else
+               $display("Error: responseFifo is unexpectedly full");
+         end
       endrule
    end
 
@@ -83,30 +83,30 @@ module mkBRAMServers#(BRAM_Configure bramConfig)(BRAMServers#(numServers, addr, 
 
    function BRAM1Port#(addr,data) server(Integer i);
       return (interface BRAM1Port#(addr,data);
-	 interface BRAMServer portA;
-	 interface Put request;
-	    method Action put(BRAMRequest#(addr,data) req) if (counter[i].positive());
-	      if (verbose) $display("%d %d addr %h data %h write %d counter %d", memorySize, cycles, req.address, req.datain, req.write, counter[i].read());
-	      portsel(i).put(req.write, req.address, req.datain);
-	      if (!req.write || req.responseOnWrite) begin
-		 counter[i].decrement(1);
-		 data0[i] <= tagged Valid tuple2(req.write, req.datain);
-	      end
-	    endmethod
-	 endinterface
-	 interface Get response;
-	    method ActionValue#(data) get();
-	      let v <- toGet(responseFifo[i]).get();
-	      if (verbose) $display("%d %d data %h counter %d", memorySize, cycles, v, counter[i].read());
-	      counter[i].increment(1);
-	      return v;
-	    endmethod
-	 endinterface: response
-	 endinterface: portA
-	      method Action portAClear();
-		 //FIXME
-	      endmethod
-	 endinterface);
+         interface BRAMServer portA;
+         interface Put request;
+            method Action put(BRAMRequest#(addr,data) req) if (counter[i].positive());
+              if (verbose) $display("%d %d addr %h data %h write %d counter %d", memorySize, cycles, req.address, req.datain, req.write, counter[i].read());
+              portsel(i).put(req.write, req.address, req.datain);
+              if (!req.write || req.responseOnWrite) begin
+                 counter[i].decrement(1);
+                 data0[i] <= tagged Valid tuple2(req.write, req.datain);
+              end
+            endmethod
+         endinterface
+         interface Get response;
+            method ActionValue#(data) get();
+              let v <- toGet(responseFifo[i]).get();
+              if (verbose) $display("%d %d data %h counter %d", memorySize, cycles, v, counter[i].read());
+              counter[i].increment(1);
+              return v;
+            endmethod
+         endinterface: response
+         endinterface: portA
+              method Action portAClear();
+                 //FIXME
+              endmethod
+         endinterface);
    endfunction
 
    interface ports = genWith(server);
@@ -114,7 +114,7 @@ endmodule
 
 module mkBRAM2Server#(BRAM_Configure bramConfig)(BRAM2Port#(addr, data))
    provisos (Bits#(addr, a__),
-	     Bits#(data, b__));
+             Bits#(data, b__));
    BRAMServers#(2,addr,data) cbram <- mkBRAMServers(bramConfig);
    
    interface portA = cbram.ports[0].portA;
@@ -125,7 +125,7 @@ endmodule
 
 module mkBRAM1Server#(BRAM_Configure bramConfig)(BRAM1Port#(addr, data))
    provisos (Bits#(addr, a__),
-	     Bits#(data, b__));
+             Bits#(data, b__));
    BRAMServers#(1,addr,data) cbram <- mkBRAMServers(bramConfig);
    
    interface portA = cbram.ports[0].portA;

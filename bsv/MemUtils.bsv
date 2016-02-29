@@ -42,8 +42,8 @@ endinterface
 
 module mkMemReader(MemReader#(dataWidth))
    provisos(Div#(dataWidth,8,dataWidthBytes),
-	    Mul#(dataWidthBytes,8,dataWidth),
-	    Log#(dataWidthBytes,beatShift));
+            Mul#(dataWidthBytes,8,dataWidth),
+            Log#(dataWidthBytes,beatShift));
 
    FIFOF#(MemData#(dataWidth)) readBuffer <- mkFIFOF;
    FIFOF#(MemRequest)           reqBuffer <- mkFIFOF;
@@ -65,12 +65,12 @@ endinterface
 
 module mkMemReaderBuff(MemReaderBuff#(dataWidth, bufferDepth))
    provisos(Div#(dataWidth,8,dataWidthBytes)
-	    ,Mul#(dataWidthBytes,8,dataWidth)
-	    ,Log#(dataWidthBytes,beatShift)
-	    ,Log#(bufferDepth,bufferDepthWidth)
-	    ,Max#(TAdd#(bufferDepthWidth,1),BurstLenSize,availableWidth)
-	    ,Add#(a__,BurstLenSize,availableWidth)
-	    );
+            ,Mul#(dataWidthBytes,8,dataWidth)
+            ,Log#(dataWidthBytes,beatShift)
+            ,Log#(bufferDepth,bufferDepthWidth)
+            ,Max#(TAdd#(bufferDepthWidth,1),BurstLenSize,availableWidth)
+            ,Add#(a__,BurstLenSize,availableWidth)
+            );
 
    FIFOF#(MemData#(dataWidth))   readBuffer <- mkSizedBRAMFIFOF(valueOf(bufferDepth));
    FIFOF#(MemRequest)        reqOutstanding <- mkFIFOF();
@@ -88,19 +88,19 @@ module mkMemReaderBuff(MemReaderBuff#(dataWidth, bufferDepth))
    interface MemReadServer readServer;
       interface Put readReq = toPut(reqOutstanding);
       interface Get readData;
-	 method ActionValue#(MemData#(dataWidth)) get();
-	    let v <- toGet(readBuffer).get();
-	    unfulfilled.decrement(1);
-	    return v;
-	 endmethod
+         method ActionValue#(MemData#(dataWidth)) get();
+            let v <- toGet(readBuffer).get();
+            unfulfilled.decrement(1);
+            return v;
+         endmethod
       endinterface: readData
    endinterface
    interface MemReadClient readClient;
       interface Get readReq = toGet(reqCommitted);
       interface Put readData;
-   	 method Action put(MemData#(dataWidth) x);
-	    readBuffer.enq(x);
-   	 endmethod
+            method Action put(MemData#(dataWidth) x);
+            readBuffer.enq(x);
+            endmethod
       endinterface
    endinterface
 endmodule
@@ -114,8 +114,8 @@ endinterface
 
 module mkMemWriter(MemWriter#(dataWidth))
    provisos(Div#(dataWidth,8,dataWidthBytes),
-	    Mul#(dataWidthBytes,8,dataWidth),
-	    Log#(dataWidthBytes,beatShift));
+            Mul#(dataWidthBytes,8,dataWidth),
+            Log#(dataWidthBytes,beatShift));
 
    FIFOF#(MemData#(dataWidth)) writeBuffer <- mkFIFOF;
    FIFOF#(MemRequest)       reqOutstanding <- mkFIFOF;
@@ -142,11 +142,11 @@ endinterface
 
 module mkMemWriterBuff(MemWriterBuff#(dataWidth, bufferDepth))
    provisos(Log#(bufferDepth,bufferDepthWidth),
-	    Max#(TAdd#(bufferDepthWidth,1),BurstLenSize,availableWidth),
-	    Add#(a__,BurstLenSize,availableWidth),
-	    Div#(dataWidth,8,dataWidthBytes),
-	    Mul#(dataWidthBytes,8,dataWidth),
-	    Log#(dataWidthBytes,beatShift));
+            Max#(TAdd#(bufferDepthWidth,1),BurstLenSize,availableWidth),
+            Add#(a__,BurstLenSize,availableWidth),
+            Div#(dataWidth,8,dataWidthBytes),
+            Mul#(dataWidthBytes,8,dataWidth),
+            Log#(dataWidthBytes,beatShift));
 
    FIFOF#(MemData#(dataWidth))  writeBuffer <- mkSizedBRAMFIFOF(valueOf(bufferDepth));
    FIFOF#(MemRequest)        reqOutstanding <- mkFIFOF();
@@ -165,20 +165,20 @@ module mkMemWriterBuff(MemWriterBuff#(dataWidth, bufferDepth))
    interface MemWriteServer writeServer;
       interface Put writeReq = toPut(reqOutstanding);
       interface Put writeData;
-	 method Action put(MemData#(dataWidth) d);
-	    writeBuffer.enq(d);
-	    available.increment(1);
-	 endmethod
+         method Action put(MemData#(dataWidth) d);
+            writeBuffer.enq(d);
+            available.increment(1);
+         endmethod
       endinterface: writeData
       interface Get writeDone = toGet(doneTags);
    endinterface
    interface MemWriteClient writeClient;
       interface Get writeReq = toGet(reqCommitted);
       interface Get writeData;
-	 method ActionValue#(MemData#(dataWidth)) get();
-	    writeBuffer.deq;
-	    return writeBuffer.first;
-	 endmethod
+         method ActionValue#(MemData#(dataWidth)) get();
+            writeBuffer.deq;
+            return writeBuffer.first;
+         endmethod
       endinterface
       interface Put writeDone = toPut(doneTags);
    endinterface
@@ -195,9 +195,9 @@ endinterface
 
 module mkUGBramFifos(UGBramFifos#(numFifos,fifoDepth,a))
    provisos(Mul#(fifoDepth,numFifos,buffSz),
-	    Log#(buffSz, buffAddrSz),
-	    Add#(a__, TLog#(numFifos), TAdd#(1, buffAddrSz)),
-	    Bits#(a,b__));
+            Log#(buffSz, buffAddrSz),
+            Add#(a__, TLog#(numFifos), TAdd#(1, buffAddrSz)),
+            Bits#(a,b__));
    
    function Bit#(buffAddrSz) hf(Integer i) = fromInteger(i*valueOf(fifoDepth));
    Vector#(numFifos, Reg#(Bit#(buffAddrSz))) head <- mapM(mkReg, genWith(hf));
@@ -211,7 +211,7 @@ module mkUGBramFifos(UGBramFifos#(numFifos,fifoDepth,a))
       Bit#(TAdd#(1,buffAddrSz)) li = (extend(idx)+1)*fifo_depth;
       Bit#(TAdd#(1,buffAddrSz)) rs = (extend(idx)+0)*fifo_depth;
       if (nt >= li) 
-	 nt = rs;
+         nt = rs;
       tail[idx] <= truncate(nt);
    endmethod
 
@@ -229,7 +229,7 @@ module mkUGBramFifos(UGBramFifos#(numFifos,fifoDepth,a))
       Bit#(TAdd#(1,buffAddrSz)) li = (extend(idx)+1)*fifo_depth;
       Bit#(TAdd#(1,buffAddrSz)) rs = (extend(idx)+0)*fifo_depth;
       if (nt >= li) 
-	 nt = rs;
+         nt = rs;
       head[idx] <= truncate(nt);
    endmethod
 
@@ -244,29 +244,29 @@ module mkMemServerFromPhysMemSlave#(PhysMemSlave#(addrWidth,dataWidth) ms)(MemSe
    provisos (Add#(a__, addrWidth, MemOffsetSize));
    interface MemReadServer readServer;
       interface Put readReq;
-	 method Action put(MemRequest req);
-	    ms.read_server.readReq.put(PhysMemRequest { addr: truncate(req.offset), burstLen: req.burstLen,
+         method Action put(MemRequest req);
+            ms.read_server.readReq.put(PhysMemRequest { addr: truncate(req.offset), burstLen: req.burstLen,
 `ifdef BYTE_ENABLES
-	       firstbe: reqFirstByteEnable(req),
-	       lastbe: reqLastByteEnable(req),
+               firstbe: reqFirstByteEnable(req),
+               lastbe: reqLastByteEnable(req),
 `endif
-	       tag: req.tag
-	       });
-	 endmethod
+               tag: req.tag
+               });
+         endmethod
       endinterface
       interface Get readData = ms.read_server.readData;
    endinterface
    interface MemWriteServer writeServer;
       interface Put writeReq;
-	 method Action put(MemRequest req);
-	    ms.write_server.writeReq.put(PhysMemRequest { addr: truncate(req.offset), burstLen: req.burstLen,
+         method Action put(MemRequest req);
+            ms.write_server.writeReq.put(PhysMemRequest { addr: truncate(req.offset), burstLen: req.burstLen,
 `ifdef BYTE_ENABLES
-	       firstbe: reqFirstByteEnable(req),
-	       lastbe: reqLastByteEnable(req),
+               firstbe: reqFirstByteEnable(req),
+               lastbe: reqLastByteEnable(req),
 `endif
-	       tag: req.tag
-	       });
-	 endmethod
+               tag: req.tag
+               });
+         endmethod
       endinterface
       interface Put           writeData = ms.write_server.writeData;
       interface Get           writeDone = ms.write_server.writeDone;

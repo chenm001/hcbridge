@@ -56,20 +56,20 @@ function Bit#(TileTagBits) tagMsb(Bit#(MemTagSize) tag); return truncate(tag >> 
 module renameReads#(Integer tile, MemReadClient#(DataBusWidth) reader, MemServerIndication err)(MemReadClient#(DataBusWidth));
    interface Get readReq;
       method ActionValue#(MemRequest) get;
-	 let req <- reader.readReq.get;
-	 Bit#(TSub#(MemTagSize,TileTagBits)) lsb = tagLsb(req.tag);
-	 Bit#(TileTagBits) msb = tagMsb(req.tag);
-	 if(req.tag != extend(lsb) && valueOf(NumberOfTiles) > 2) begin // one mgmt tile and one user tile
-	    $display("renameReads tile tag out of range: 'h%h", req.tag);
-	    err.error(extend(pack(DmaErrorTileTagOutOfRange)), req.sglId, extend(req.tag), fromInteger(tile));
-	 end
-	 req.tag = {fromInteger(tile),lsb};
-	 return req;
+         let req <- reader.readReq.get;
+         Bit#(TSub#(MemTagSize,TileTagBits)) lsb = tagLsb(req.tag);
+         Bit#(TileTagBits) msb = tagMsb(req.tag);
+         if(req.tag != extend(lsb) && valueOf(NumberOfTiles) > 2) begin // one mgmt tile and one user tile
+            $display("renameReads tile tag out of range: 'h%h", req.tag);
+            err.error(extend(pack(DmaErrorTileTagOutOfRange)), req.sglId, extend(req.tag), fromInteger(tile));
+         end
+         req.tag = {fromInteger(tile),lsb};
+         return req;
       endmethod
    endinterface
    interface Put readData;
       method Action put(MemData#(DataBusWidth) v);
-	 reader.readData.put(MemData{data:v.data, tag:{0,tagLsb(v.tag)}, last:v.last});
+         reader.readData.put(MemData{data:v.data, tag:{0,tagLsb(v.tag)}, last:v.last});
       endmethod
    endinterface
 endmodule
@@ -77,26 +77,26 @@ endmodule
 module renameWrites#(Integer tile, MemWriteClient#(DataBusWidth) writer, MemServerIndication err)(MemWriteClient#(DataBusWidth));
    interface Get writeReq;
       method ActionValue#(MemRequest) get;
-	 let req <- writer.writeReq.get;
-	 Bit#(TSub#(MemTagSize,TileTagBits)) lsb = tagLsb(req.tag);
-	 Bit#(TileTagBits) msb = tagMsb(req.tag);
-	 if(req.tag != extend(lsb) && valueOf(NumberOfTiles) > 2) begin // one mgmt tile and one user tile
-	    $display("renameWrites tile tag out of range: 'h%h", req.tag);
-	    err.error(extend(pack(DmaErrorTileTagOutOfRange)), req.sglId, extend(req.tag), fromInteger(tile));
-	 end
-	 req.tag = {fromInteger(tile),lsb};
-	 return req;
+         let req <- writer.writeReq.get;
+         Bit#(TSub#(MemTagSize,TileTagBits)) lsb = tagLsb(req.tag);
+         Bit#(TileTagBits) msb = tagMsb(req.tag);
+         if(req.tag != extend(lsb) && valueOf(NumberOfTiles) > 2) begin // one mgmt tile and one user tile
+            $display("renameWrites tile tag out of range: 'h%h", req.tag);
+            err.error(extend(pack(DmaErrorTileTagOutOfRange)), req.sglId, extend(req.tag), fromInteger(tile));
+         end
+         req.tag = {fromInteger(tile),lsb};
+         return req;
       endmethod
    endinterface
    interface Get writeData;
       method ActionValue#(MemData#(DataBusWidth)) get;
-	 let rv <- writer.writeData.get;
-   	 return MemData{data:rv.data, tag:{0,tagLsb(rv.tag)}, last:rv.last};
+         let rv <- writer.writeData.get;
+            return MemData{data:rv.data, tag:{0,tagLsb(rv.tag)}, last:rv.last};
       endmethod
    endinterface
    interface Put writeDone;
       method Action put(Bit#(MemTagSize) v);
-	 writer.writeDone.put({0,tagLsb(v)});
+         writer.writeDone.put({0,tagLsb(v)});
       endmethod
    endinterface
 endmodule

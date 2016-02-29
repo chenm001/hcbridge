@@ -36,18 +36,18 @@ import ToolBramFifo      ::*;
 ////////////////////////////////////////////////////////////////////////////////
 module mkMIMOBram#(MIMOConfiguration cfg)(MIMO#(max_in, max_out, size, t))
    provisos (  Bits#(t, st)               // object must have bit representation
-	     , Add#(__f, 1, st)           // object is at least 1 byte in size
-	     , Add#(2, __a, size)         // must have at least 2 elements of storage
-	     , Add#(__b, max_in, size)    // the max enqueued amount must be less than or equal to the full storage
-	     , Add#(__c, max_out, size)   // the max dequeued amount must be less than or equal to the full storage
+             , Add#(__f, 1, st)           // object is at least 1 byte in size
+             , Add#(2, __a, size)         // must have at least 2 elements of storage
+             , Add#(__b, max_in, size)    // the max enqueued amount must be less than or equal to the full storage
+             , Add#(__c, max_out, size)   // the max dequeued amount must be less than or equal to the full storage
              , Mul#(st, size, total)      // total bits of storage
              , Mul#(st, max_in, intot)    // total bits to be enqueued
              , Mul#(st, max_out, outtot)  // total bits to be dequeued
              , Add#(__d, outtot, total)   // make sure the number of dequeue bits is not larger than the total storage
-	     , Max#(max_in, max_out, max) // calculate the max width of the memories
-	     , Div#(size, max, em1)       // calculate the number of entries for each memory required
-	     , Add#(em1, 1, e)
-	     , Add#(__e, max_out, max)
+             , Max#(max_in, max_out, max) // calculate the max width of the memories
+             , Div#(size, max, em1)       // calculate the number of entries for each memory required
+             , Add#(em1, 1, e)
+             , Add#(__e, max_out, max)
              );
    
    ////////////////////////////////////////////////////////////////////////////////
@@ -78,13 +78,13 @@ module mkMIMOBram#(MIMOConfiguration cfg)(MIMO#(max_in, max_out, size, t))
 
    function Action doEnq(Bool doit, FIFOF#(t) ifc, t datain);
       action
-	 if (doit) ifc.enq(datain);
+         if (doit) ifc.enq(datain);
       endaction
    endfunction
 
    function Action doDeq(Bool doit, FIFOF#(t) ifc);
       action
-	 if (doit) ifc.deq();
+         if (doit) ifc.deq();
       endaction
    endfunction
    
@@ -105,78 +105,78 @@ module mkMIMOBram#(MIMOConfiguration cfg)(MIMO#(max_in, max_out, size, t))
    rules
       (* aggressive_implicit_conditions *)
       rule dequeue if (rwDeqCount.wget matches tagged Valid .dcount);
-	 Vector#(max, Bool) deqDoIt = rotateBy(createMask(cExtend(dcount)), cExtend(rReadIndex));
-	 for(Integer i = 0; i < valueOf(max); i = i + 1) begin
-	    if (deqDoIt[i]) vrwDeqFifo[i].wset(True);
-	 end
-	 
-	 rDataCount.dec(cExtend(dcount));
-	 
-	 UInt#(32) ridx = cExtend(rReadIndex);
-	 UInt#(32) dcnt = cExtend(dcount);
-	 if ((ridx + dcnt) >= fromInteger(valueOf(max))) 
-	    rReadIndex <= rReadIndex - fromInteger(valueOf(max)) + cExtend(dcount);
-	 else
-	    rReadIndex <= rReadIndex + cExtend(dcount);
+         Vector#(max, Bool) deqDoIt = rotateBy(createMask(cExtend(dcount)), cExtend(rReadIndex));
+         for(Integer i = 0; i < valueOf(max); i = i + 1) begin
+            if (deqDoIt[i]) vrwDeqFifo[i].wset(True);
+         end
+         
+         rDataCount.dec(cExtend(dcount));
+         
+         UInt#(32) ridx = cExtend(rReadIndex);
+         UInt#(32) dcnt = cExtend(dcount);
+         if ((ridx + dcnt) >= fromInteger(valueOf(max))) 
+            rReadIndex <= rReadIndex - fromInteger(valueOf(max)) + cExtend(dcount);
+         else
+            rReadIndex <= rReadIndex + cExtend(dcount);
       endrule
       
       (* aggressive_implicit_conditions *)
       rule enqueue if (rwEnqCount.wget matches tagged Valid .ecount &&& 
-		      rwEnqData.wget matches tagged Valid .edata
-		      );
-	 Vector#(max, t)    enqData = rotateBy(unpack(cExtend(edata)), cExtend(rWriteIndex));
-	 Vector#(max, Bool) enqDoIt = rotateBy(createMask(cExtend(ecount)), cExtend(rWriteIndex));
-	 
-	 for(Integer i = 0; i < valueOf(max); i = i + 1) begin
-	    if (enqDoIt[i]) vrwEnqFifo[i].wset(enqData[i]);
-	 end
-	 
-	 rDataCount.inc(cExtend(ecount));
-	 
-	 UInt#(32) widx = cExtend(rWriteIndex);
-	 UInt#(32) ecnt = cExtend(ecount);
-	 if ((widx + ecnt) >= fromInteger(valueOf(max))) 
-	    rWriteIndex <= rWriteIndex - fromInteger(valueOf(max)) + cExtend(ecount);
-	 else
-	    rWriteIndex <= rWriteIndex + cExtend(ecount);
+                      rwEnqData.wget matches tagged Valid .edata
+                      );
+         Vector#(max, t)    enqData = rotateBy(unpack(cExtend(edata)), cExtend(rWriteIndex));
+         Vector#(max, Bool) enqDoIt = rotateBy(createMask(cExtend(ecount)), cExtend(rWriteIndex));
+         
+         for(Integer i = 0; i < valueOf(max); i = i + 1) begin
+            if (enqDoIt[i]) vrwEnqFifo[i].wset(enqData[i]);
+         end
+         
+         rDataCount.inc(cExtend(ecount));
+         
+         UInt#(32) widx = cExtend(rWriteIndex);
+         UInt#(32) ecnt = cExtend(ecount);
+         if ((widx + ecnt) >= fromInteger(valueOf(max))) 
+            rWriteIndex <= rWriteIndex - fromInteger(valueOf(max)) + cExtend(ecount);
+         else
+            rWriteIndex <= rWriteIndex + cExtend(ecount);
       endrule
    endrules;
 
    Rules re = emptyRules;
    for(Integer i = 0; i < valueOf(max); i = i + 1) begin
       re = rJoinConflictFree(re, 
-	 rules
-	    rule enqueue_fifo if (vrwEnqFifo[i].wget matches tagged Valid .enqdata);
-	       vfStorage[i].enq(enqdata);
-	    endrule
-	 endrules
-	 );
+         rules
+            rule enqueue_fifo if (vrwEnqFifo[i].wget matches tagged Valid .enqdata);
+               vfStorage[i].enq(enqdata);
+            endrule
+         endrules
+         );
    end
    
    Rules rd = emptyRules;
    for(Integer i = 0; i < valueOf(max); i = i + 1) begin
       rd = rJoinConflictFree(rd, 
-	 rules
-	    rule dequeue_fifo if (vrwDeqFifo[i].wget matches tagged Valid .*);
-	       vfStorage[i].deq();
-	    endrule
-	 endrules
-	 );
+         rules
+            rule dequeue_fifo if (vrwDeqFifo[i].wget matches tagged Valid .*);
+               vfStorage[i].deq();
+            endrule
+         endrules
+         );
    end
    
    Rules r = rJoinConflictFree(rd, re);
    r = rJoin(d, r);
    r = rJoinPreempts(
-		     rules
-			(* fire_when_enabled *)
-			rule clear if (pwClear);
-			   function Action getClear(FIFOF#(t) ifc) = ifc.clear();
-			   rDataCount.setF(0);
-			   rWriteIndex <= 0;
-			   rReadIndex <= 0;
-			   joinActions(map(getClear, vfStorage));
-			endrule
-		     endrules, r);
+                     rules
+                        (* fire_when_enabled *)
+                        rule clear if (pwClear);
+                           function Action getClear(FIFOF#(t) ifc) = ifc.clear();
+                           rDataCount.setF(0);
+                           rWriteIndex <= 0;
+                           rReadIndex <= 0;
+                           joinActions(map(getClear, vfStorage));
+                        endrule
+                     endrules, r);
    
    addRules(r);
    
@@ -192,8 +192,8 @@ module mkMIMOBram#(MIMOConfiguration cfg)(MIMO#(max_in, max_out, size, t))
    method Vector#(max_out, t) first() if (cfg.unguarded || (rDataCount.value() > 0));
       Vector#(max, t) v = newVector;
       for(Integer i = 0; i < valueOf(max); i = i + 1) begin
-	 if (vfStorage[i].notEmpty()) v[i] = vfStorage[i].first();
-	 else                         v[i] = ?;
+         if (vfStorage[i].notEmpty()) v[i] = vfStorage[i].first();
+         else                         v[i] = ?;
       end
       return take(rotateRBy(v, cExtend(rReadIndex)));
    endmethod

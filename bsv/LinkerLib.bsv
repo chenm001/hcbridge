@@ -55,13 +55,13 @@ module mkGetInverter(GetInverter#(a)) provisos (Bits#(a, asz));
    let inverter <- mkGetInverterBvi();
    interface Get mod;
       method ActionValue#(a) get();
-	 let v <- inverter.mod.get();
-	 return unpack(v);
+         let v <- inverter.mod.get();
+         return unpack(v);
       endmethod
    endinterface
    interface Put inverse;
       method Action put(a v);
-	 inverter.inverse.put(pack(v));
+         inverter.inverse.put(pack(v));
       endmethod
    endinterface
 endmodule
@@ -84,13 +84,13 @@ module mkPutInverter(PutInverter#(a)) provisos (Bits#(a, asz));
    let inverter <- mkPutInverterBvi();
    interface Put mod;
       method Action put(a v);
-	 inverter.mod.put(pack(v));
+         inverter.mod.put(pack(v));
       endmethod
    endinterface
    interface Get inverse;
       method ActionValue#(a) get();
-	 let v <- inverter.inverse.get();
-	 return unpack(v);
+         let v <- inverter.inverse.get();
+         return unpack(v);
       endmethod
    endinterface
 endmodule
@@ -115,13 +115,13 @@ module mkLinkInverter(LinkInverter#(a)) provisos (Bits#(a, asz));
    let inverter <- mkLinkInverterBvi();
    interface Put mod;
       method Action put(a v);
-	 inverter.mod.put(pack(v));
+         inverter.mod.put(pack(v));
       endmethod
    endinterface
    interface Get inverse;
       method ActionValue#(a) get();
-	 let v <- inverter.inverse.get();
-	 return unpack(v);
+         let v <- inverter.inverse.get();
+         return unpack(v);
       endmethod
    endinterface
    method Bool modReady();

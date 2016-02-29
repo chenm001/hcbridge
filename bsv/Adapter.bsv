@@ -63,7 +63,7 @@ module mkAdapterToBus(AdapterToBus#(n,a))
    interface PipeIn in;
       method Action enq(a val) if (!notEmptyReg);
          bits <= {padding,pack(val)};
-	 notEmptyReg <= True;
+         notEmptyReg <= True;
       endmethod
       method notFull = !notEmptyReg;
    endinterface
@@ -75,13 +75,13 @@ module mkAdapterToBus(AdapterToBus#(n,a))
          if (count == max)
             begin 
                count <= 0;
-	       notEmptyReg <= False;
+               notEmptyReg <= False;
             end
          else
             begin
                count <= count + 1;
-	       shift <= shift + fromInteger(valueOf(n));
-	       bits <= (bits << valueOf(n));
+               shift <= shift + fromInteger(valueOf(n));
+               bits <= (bits << valueOf(n));
             end   
       endmethod
       method notEmpty = notEmptyReg;
@@ -223,7 +223,7 @@ module mkAdapterTb#(AdapterIndication indication)(AdapterTb);
        tb32_17.out.deq;
        dynamicAssert(fb32_17.out.first == 17'h10203, "Expected 10203");
        fb32_17.out.deq;
-       	     
+                    
        indication.done();
    endseq
    );

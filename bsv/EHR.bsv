@@ -61,19 +61,19 @@ module mkVirtualReg#(Reg#(alpha) state, Reg#(alpha) base)
    Probe#(alpha) probe <- mkProbe; 
 
    Reg#(alpha) i0 = interface Reg
-		       method _read();
-			  return base._read();
+                       method _read();
+                          return base._read();
                        endmethod
-		       method Action _write(x);
-			  w.wset(x);
-			  probe <= base._read();
+                       method Action _write(x);
+                          w.wset(x);
+                          probe <= base._read();
                        endmethod
-		    endinterface;
+                    endinterface;
 
    Reg#(alpha) i1 = interface Reg
-		       method _read() = fromMaybe(base._read, w.wget());
+                       method _read() = fromMaybe(base._read, w.wget());
                        method _write(x) = noAction; // never used
-		    endinterface;   
+                    endinterface;   
 
    return (tuple2(i0,i1));
 
@@ -86,7 +86,7 @@ endmodule
 /*********************************************************************/
 
 module mkEHRF#(alpha init)(EHR#(n,alpha)) provisos(Bits#(alpha, asz),
-						   Add#(li, 1, n));
+                                                   Add#(li, 1, n));
 
    Reg#(alpha) r <- mkReg(init);
 
@@ -101,9 +101,9 @@ module mkEHRF#(alpha init)(EHR#(n,alpha)) provisos(Bits#(alpha, asz),
    // make interfaces
    for(Integer i = 0; i < valueOf(n); i = i + 1)
       begin
-	 tinf <- mkVirtualReg(r,old);
-	 vidx[i] = tinf.fst();
-	 old = tinf.snd();
+         tinf <- mkVirtualReg(r,old);
+         vidx[i] = tinf.fst();
+         old = tinf.snd();
       end   
    
    rule do_stuff(True);
@@ -120,7 +120,7 @@ endmodule
 /*********************************************************************/
 
 module mkEHR#(alpha init) (EHR#(n,alpha)) provisos(Bits#(alpha, asz),
-						   Add#(li, 1, n));
+                                                   Add#(li, 1, n));
    
    Reg#(alpha)  r <- mkReg(init);
    Vector#(n, RWire#(alpha)) wires  <- replicateM(mkRWire);
@@ -130,21 +130,21 @@ module mkEHR#(alpha init) (EHR#(n,alpha)) provisos(Bits#(alpha, asz),
    
    for(Integer i = 0; i < valueOf(n); i = i + 1)
       begin
-	 if(i==0) chain[i] = r;
-	 else chain[i] = fromMaybe(chain[i-1], wires[i-1].wget());
+         if(i==0) chain[i] = r;
+         else chain[i] = fromMaybe(chain[i-1], wires[i-1].wget());
       end
    
    for(Integer j = 0; j < valueOf(n); j = j + 1)
       begin
-	 vidx[j] = interface Reg
-		      method _read();
-			 return chain[j];
-		      endmethod
-		      method Action _write(x);
-			 wires[j].wset(x);
-			 probes[j].wset(chain[j]);
-		      endmethod
-		   endinterface;
+         vidx[j] = interface Reg
+                      method _read();
+                         return chain[j];
+                      endmethod
+                      method Action _write(x);
+                         wires[j].wset(x);
+                         probes[j].wset(chain[j]);
+                      endmethod
+                   endinterface;
       end
    
    

@@ -135,21 +135,21 @@ module mkPcieToMem#(PciId my_id)(PcieToMem);
       readInProgress <= (rbc != 0);
       readBurstCountGreaterThan4 <= (rbc > 4);
       if (rbc == 0) begin
-	 readDataFifo.deq;
+         readDataFifo.deq;
       end
    endrule
 
     function Bit#(16) tlpBe(TLPLength len);
        if (len == 0)
-	  return 0;
+          return 0;
        else if (len == 1)
-	  return 16'hf000;
+          return 16'hf000;
        else if (len == 2)
-	  return 16'hff00;
+          return 16'hff00;
        else if (len == 3)
-	  return 16'hfff0;
+          return 16'hfff0;
        else
-	  return 16'hffff;
+          return 16'hffff;
     endfunction
 
    rule continuation if (readInProgress && completionMimo.deqReadyN(completionMimoDeqCount));
@@ -161,29 +161,29 @@ module mkPcieToMem#(PciId my_id)(PcieToMem);
       completionMimo.deq(completionMimoDeqCount);
 
       if (readBurstCountGreaterThan4) begin
-	 rbc = rbc - 4;
-	 tlp.be = tlpBe(4);
-	 tlp.eof = False;
+         rbc = rbc - 4;
+         tlp.be = tlpBe(4);
+         tlp.eof = False;
       end
       else begin
-	 tlp.be = tlpBe(rbc);
-	 $display("tlp.data=%h tlp.be=%h", tlp.data, tlp.be);
-	 tlp.eof = True;
-	 rbc = 0;
+         tlp.be = tlpBe(rbc);
+         $display("tlp.data=%h tlp.be=%h", tlp.data, tlp.be);
+         tlp.eof = True;
+         rbc = 0;
       end
 
       readBurstCount <= rbc;
       completionMimoDeqCount <= truncate(min(4,unpack(rbc)));
       readBurstCountGreaterThan4 <= (rbc > 4);
       if (!readBurstCountGreaterThan4) begin
-	 readDataFifo.deq();
-	 readInProgress <= False;
+         readDataFifo.deq();
+         readInProgress <= False;
       end
       for (Integer i = 0; i < 4; i = i + 1)
 `ifdef AXI
-	 tlp.data[(i+1)*32-1:i*32] = byteSwap(dvec[3-i]);
+         tlp.data[(i+1)*32-1:i*32] = byteSwap(dvec[3-i]);
 `elsif AVALON
-	 tlp.data[(i+1)*32-1:i*32] = (dvec[3-i]);
+         tlp.data[(i+1)*32-1:i*32] = (dvec[3-i]);
          tlp.hit = hitReg;
 `endif
       tlpOutFifo.enq(tlp);
@@ -192,84 +192,84 @@ module mkPcieToMem#(PciId my_id)(PcieToMem);
     interface Client        tlp;
     interface Put response;
         method Action put(TLPData#(16) tlp);
-	    $display("PcieToMem.put tlp=%h", tlp);
-	    TLPMemoryIO3DWHeader h = unpack(tlp.data);
-	    hitReg <= tlp.hit;
-	    TLPMemoryIO3DWHeader hdr_3dw = unpack(tlp.data);
+            $display("PcieToMem.put tlp=%h", tlp);
+            TLPMemoryIO3DWHeader h = unpack(tlp.data);
+            hitReg <= tlp.hit;
+            TLPMemoryIO3DWHeader hdr_3dw = unpack(tlp.data);
 `ifdef AVALON
             // For Altera, the position of payload in a 3DW TLP depends on alignment.
             let quadWordAligned = isQuadWordAligned(getLowerAddr(hdr_3dw.addr, hdr_3dw.firstbe));
 `endif
-	    if (tlp.sof && hdr_3dw.format == MEM_READ_3DW_NO_DATA) begin
-	       if (readHeaderFifo.notFull())
-	          readHeaderFifo.enq(hdr_3dw);
-	       else begin
-		  // FIXME: should generate a response or host will lock up
-	       end
-	    end
-	    else begin
+            if (tlp.sof && hdr_3dw.format == MEM_READ_3DW_NO_DATA) begin
+               if (readHeaderFifo.notFull())
+                  readHeaderFifo.enq(hdr_3dw);
+               else begin
+                  // FIXME: should generate a response or host will lock up
+               end
+            end
+            else begin
                //FIXME: should rewrite to allow burst write.
                if (tlp.sof && writeHeaderFifo.notFull()) begin
-		  writeHeaderFifo.enq(hdr_3dw);
+                  writeHeaderFifo.enq(hdr_3dw);
                end
-	    end
-	endmethod
+            end
+        endmethod
     endinterface
     interface Get request = toGet(tlpOutFifo);
     endinterface: tlp
     interface PhysMemMaster master;
     interface PhysMemWriteClient write_client;
         interface Get    writeReq;
-	  method ActionValue#(PhysMemRequest#(32,32)) get();
-	     let hdr = writeHeaderFifo.first;
-	     writeHeaderFifo.deq;
-	     writeDataFifo.enq(hdr);
-	     let burstLen = extend(hdr.length << 2);
+          method ActionValue#(PhysMemRequest#(32,32)) get();
+             let hdr = writeHeaderFifo.first;
+             writeHeaderFifo.deq;
+             writeDataFifo.enq(hdr);
+             let burstLen = extend(hdr.length << 2);
              $display("burstLen = %h", hdr.length << 2);
-	     return PhysMemRequest { addr: extend(writeHeaderFifo.first.addr) << 2, burstLen: burstLen, tag: truncate(writeHeaderFifo.first.tag)
+             return PhysMemRequest { addr: extend(writeHeaderFifo.first.addr) << 2, burstLen: burstLen, tag: truncate(writeHeaderFifo.first.tag)
 `ifdef BYTE_ENABLES
-				    , firstbe: maxBound, lastbe: maxBound
+                                    , firstbe: maxBound, lastbe: maxBound
 `endif
 };
-	  endmethod
+          endmethod
        endinterface
         interface Get writeData;
-	  method ActionValue#(MemData#(32)) get();
-	     let hdr <- toGet(writeDataFifo).get();
+          method ActionValue#(MemData#(32)) get();
+             let hdr <- toGet(writeDataFifo).get();
 `ifdef AXI
-	     let data = byteSwap(hdr.data);
+             let data = byteSwap(hdr.data);
 `elsif AVALON
-	     let data = hdr.data;
+             let data = hdr.data;
 `endif
-	     return MemData { data: data, tag: truncate(hdr.tag), last: True};
-	  endmethod
+             return MemData { data: data, tag: truncate(hdr.tag), last: True};
+          endmethod
        endinterface
         interface Put       writeDone;
-	  method Action put(Bit#(MemTagSize) resp);
-	  endmethod
+          method Action put(Bit#(MemTagSize) resp);
+          endmethod
        endinterface
      endinterface
     interface PhysMemReadClient read_client;
         interface Get    readReq;
-	  method ActionValue#(PhysMemRequest#(32,32)) get();
-	     let hdr = readHeaderFifo.first;
-	     readHeaderFifo.deq;
-	     //$display("req_ar hdr.length=%d hdr.addr=%h", hdr.length, hdr.addr);
-	     readDataFifo.enq(hdr);
-	     let burstLen = extend(hdr.length << 2);
-	     return PhysMemRequest { addr: extend(readHeaderFifo.first.addr) << 2, burstLen: burstLen, tag: truncate(readHeaderFifo.first.tag)
+          method ActionValue#(PhysMemRequest#(32,32)) get();
+             let hdr = readHeaderFifo.first;
+             readHeaderFifo.deq;
+             //$display("req_ar hdr.length=%d hdr.addr=%h", hdr.length, hdr.addr);
+             readDataFifo.enq(hdr);
+             let burstLen = extend(hdr.length << 2);
+             return PhysMemRequest { addr: extend(readHeaderFifo.first.addr) << 2, burstLen: burstLen, tag: truncate(readHeaderFifo.first.tag)
 `ifdef BYTE_ENABLES
-				    , firstbe: maxBound, lastbe: maxBound
+                                    , firstbe: maxBound, lastbe: maxBound
 `endif
 };
-	    endmethod
+            endmethod
        endinterface
         interface Put readData;
-	  method Action put(MemData#(32) resp) if (completionMimo.enqReadyN(1));
-	     Vector#(1, Bit#(32)) vec = cons(resp.data, nil);
-	     completionMimo.enq(1, vec);
-	  endmethod
-	endinterface
+          method Action put(MemData#(32) resp) if (completionMimo.enqReadyN(1));
+             Vector#(1, Bit#(32)) vec = cons(resp.data, nil);
+             completionMimo.enq(1, vec);
+          endmethod
+        endinterface
     endinterface
     endinterface: master
 endmodule: mkPcieToMem
@@ -323,13 +323,13 @@ module mkMemInterrupt#(PciId my_id)(MemInterrupt);
 `endif
 
        if (mswIsZero && lswIsZero) begin
-	  // do not write to 0 -- it wedges the host
-	  deqInterruptRequestFifo = True;
+          // do not write to 0 -- it wedges the host
+          deqInterruptRequestFifo = True;
        end
        else if (mswIsZero) begin
           TLPMemoryIO3DWHeader hdr_3dw = defaultValue();
           hdr_3dw.format = MEM_WRITE_3DW_DATA;
-	  //hdr_3dw.pkttype = MEM_READ_WRITE;
+          //hdr_3dw.pkttype = MEM_READ_WRITE;
           hdr_3dw.tag = tlpTag;
           hdr_3dw.reqid = my_id;
           hdr_3dw.length = 1;
@@ -337,44 +337,44 @@ module mkMemInterrupt#(PciId my_id)(MemInterrupt);
           hdr_3dw.lastbe = '0;
           hdr_3dw.addr = interruptAddr[31:2];
 `ifdef AXI
-	  hdr_3dw.data = byteSwap(interruptData);
+          hdr_3dw.data = byteSwap(interruptData);
 `elsif AVALON
-	  hdr_3dw.data = interruptData;
+          hdr_3dw.data = interruptData;
 `endif
 
-	  tlp.data = pack(hdr_3dw);
+          tlp.data = pack(hdr_3dw);
           if (dataInSecondTlp) begin
-	     tlp.eof = False;
+             tlp.eof = False;
              interruptSecondHalf <= tagged Valid interruptData;
           end
-	  else begin
-	     tlp.eof = True;
-	     deqInterruptRequestFifo = True;
-	  end
-	  sendInterrupt = True;
+          else begin
+             tlp.eof = True;
+             deqInterruptRequestFifo = True;
+          end
+          sendInterrupt = True;
        end
        else begin
-	  TLPMemory4DWHeader hdr_4dw = defaultValue;
-	  hdr_4dw.format = MEM_WRITE_4DW_DATA;
-	  //hdr_4dw.pkttype = MEM_READ_WRITE;
-	  hdr_4dw.tag = tlpTag;
-	  hdr_4dw.reqid = my_id;
-	  hdr_4dw.nosnoop = SNOOPING_REQD;
-	  hdr_4dw.addr = interruptAddr[40-1:2];
-	  hdr_4dw.length = 1;
-	  hdr_4dw.firstbe = 4'hf;
-	  hdr_4dw.lastbe = 0;
-	  tlp.data = pack(hdr_4dw);
+          TLPMemory4DWHeader hdr_4dw = defaultValue;
+          hdr_4dw.format = MEM_WRITE_4DW_DATA;
+          //hdr_4dw.pkttype = MEM_READ_WRITE;
+          hdr_4dw.tag = tlpTag;
+          hdr_4dw.reqid = my_id;
+          hdr_4dw.nosnoop = SNOOPING_REQD;
+          hdr_4dw.addr = interruptAddr[40-1:2];
+          hdr_4dw.length = 1;
+          hdr_4dw.firstbe = 4'hf;
+          hdr_4dw.lastbe = 0;
+          tlp.data = pack(hdr_4dw);
 
-	  sendInterrupt = True;
-	  interruptSecondHalf <= tagged Valid interruptData;
+          sendInterrupt = True;
+          interruptSecondHalf <= tagged Valid interruptData;
        end
 
        if (deqInterruptRequestFifo) begin
-	  interruptRequestFifo.deq();
+          interruptRequestFifo.deq();
        end
        if (sendInterrupt)
-	  tlpOutFifo.enq(tlp);
+          tlpOutFifo.enq(tlp);
     endrule
 
     rule interruptTlpDataOut if (interruptSecondHalf matches tagged Valid .interruptData);
@@ -396,26 +396,26 @@ module mkMemInterrupt#(PciId my_id)(MemInterrupt);
     interface Client        tlp;
     interface Put response;
         method Action put(TLPData#(16) tlp);
-	endmethod
+        endmethod
     endinterface
     interface Get request = toGet(tlpOutFifo);
     endinterface: tlp
     interface Put interruptRequest;
        method Action put(Tuple2#(Bit#(64),Bit#(32)) intr);
-	  match { .addr, .data } = intr;
-	  Bool mswIsZero = (addr[63:32] == 0);
-	  Bool lswIsZero = (addr[31:0] == 0);
-	  let interruptRequest = InterruptRequest { addr: addr, data: data, mswIsZero: mswIsZero, lswIsZero: lswIsZero };
+          match { .addr, .data } = intr;
+          Bool mswIsZero = (addr[63:32] == 0);
+          Bool lswIsZero = (addr[31:0] == 0);
+          let interruptRequest = InterruptRequest { addr: addr, data: data, mswIsZero: mswIsZero, lswIsZero: lswIsZero };
           interruptRequestFifo.enq(interruptRequest);
-	  if (interruptTraceFifo.notFull())
-	      interruptTraceFifo.enq(interruptRequest);
+          if (interruptTraceFifo.notFull())
+              interruptTraceFifo.enq(interruptRequest);
        endmethod
     endinterface
     interface Get interruptTrace;
        method ActionValue#(Tuple2#(Bit#(64),Bit#(32))) get();
            let req = interruptTraceFifo.first();
            interruptTraceFifo.deq();
-	   return tuple2(req.addr, req.data);
+           return tuple2(req.addr, req.data);
        endmethod
     endinterface
 endmodule: mkMemInterrupt

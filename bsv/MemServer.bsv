@@ -37,7 +37,7 @@ import MemServerInternal::*;
 interface MemServer#(numeric type addrWidth, numeric type busWidth, numeric type nMasters);
    interface MemServerRequest request;
    interface Vector#(nMasters,PhysMemMaster#(addrWidth, busWidth)) masters;
-endinterface		
+endinterface                
 
 interface MemServerWithMMU#(numeric type addrWidth, numeric type busWidth, numeric type nMasters);
    interface MemServerRequest memServerRequest;
@@ -63,19 +63,19 @@ typedef struct {
    } DmaError deriving (Bits);
 
 module mkMemServer#(Vector#(numReadClients, MemReadClient#(busWidth)) readClients,
-		    Vector#(numWriteClients, MemWriteClient#(busWidth)) writeClients,
-		    Vector#(numMMUs,MMU#(addrWidth)) mmus,
-		    MemServerIndication indication)  
+                    Vector#(numWriteClients, MemWriteClient#(busWidth)) writeClients,
+                    Vector#(numMMUs,MMU#(addrWidth)) mmus,
+                    MemServerIndication indication)  
    (MemServer#(addrWidth, busWidth, nMasters))
    provisos(Mul#(TDiv#(numWriteClients, nMasters),nMasters,nws)
-	    ,Mul#(TDiv#(numReadClients, nMasters),nMasters,nrs)
-	    ,Add#(TLog#(TDiv#(busWidth, 8)), a__, 8)
-	    ,Add#(TLog#(TDiv#(busWidth, 8)), b__, BurstLenSize)
-	    ,Add#(c__, addrWidth, 64)
-	    ,Add#(numWriteClients, d__, nws)
-	    ,Add#(numReadClients, e__, nrs)
-	    ,Add#(f__, TDiv#(busWidth, 8), ByteEnableSize)
-	    );
+            ,Mul#(TDiv#(numReadClients, nMasters),nMasters,nrs)
+            ,Add#(TLog#(TDiv#(busWidth, 8)), a__, 8)
+            ,Add#(TLog#(TDiv#(busWidth, 8)), b__, BurstLenSize)
+            ,Add#(c__, addrWidth, 64)
+            ,Add#(numWriteClients, d__, nws)
+            ,Add#(numReadClients, e__, nrs)
+            ,Add#(f__, TDiv#(busWidth, 8), ByteEnableSize)
+            );
    
    MemServerRead#(addrWidth,busWidth,nMasters,nrs)  reader <- mkMemServerRead(indication, mmus);
    MemServerWrite#(addrWidth,busWidth,nMasters,nws) writer <- mkMemServerWrite(indication, mmus);
@@ -84,43 +84,43 @@ module mkMemServer#(Vector#(numReadClients, MemReadClient#(busWidth)) readClient
    zipWithM_(mkConnection,writeClients,take(writer.servers));
    
    function PhysMemMaster#(addrWidth,busWidth) mkm(Integer i) = (interface PhysMemMaster#(addrWidth,busWidth);
-		     interface PhysMemReadClient read_client = reader.clients[i];
-		     interface PhysMemWriteClient write_client = writer.clients[i];
-		  endinterface);
+                     interface PhysMemReadClient read_client = reader.clients[i];
+                     interface PhysMemWriteClient write_client = writer.clients[i];
+                  endinterface);
 
    interface MemServerRequest request;
       method Action setTileState(TileControl tc);
-	 reader.request.setTileState(tc);
-	 writer.request.setTileState(tc);
+         reader.request.setTileState(tc);
+         writer.request.setTileState(tc);
       endmethod
       method Action stateDbg(ChannelType rc);
-	 if (rc == ChannelType_Read)
-	    reader.request.stateDbg(rc);
-	 else
-	    writer.request.stateDbg(rc);
+         if (rc == ChannelType_Read)
+            reader.request.stateDbg(rc);
+         else
+            writer.request.stateDbg(rc);
       endmethod
       method Action memoryTraffic(ChannelType rc);
-	 if (rc == ChannelType_Read) 
-	    reader.request.memoryTraffic(rc);
-	 else 
-	    writer.request.memoryTraffic(rc);
+         if (rc == ChannelType_Read) 
+            reader.request.memoryTraffic(rc);
+         else 
+            writer.request.memoryTraffic(rc);
       endmethod
       method Action addrTrans(Bit#(32) pointer, Bit#(32) offset);
-	 writer.request.addrTrans(pointer,offset);
+         writer.request.addrTrans(pointer,offset);
       endmethod
    endinterface
    interface masters = map(mkm,genVector);
 endmodule
 
 module mkMemServerRead#(MemServerIndication indication,
-			Vector#(numMMUs,MMU#(addrWidth)) mmus)
+                        Vector#(numMMUs,MMU#(addrWidth)) mmus)
    (MemServerRead#(addrWidth, busWidth, numClients, numServers))
    provisos(Mul#(nrc, numClients, numServers)
-	    ,Add#(a__, addrWidth, 64)
-	    ,Add#(TLog#(TDiv#(busWidth, 8)), b__, 8)
-	    ,Add#(TLog#(TDiv#(busWidth, 8)), c__, BurstLenSize)
-	    ,Add#(d__, TDiv#(busWidth, 8), ByteEnableSize)
-	    );
+            ,Add#(a__, addrWidth, 64)
+            ,Add#(TLog#(TDiv#(busWidth, 8)), b__, 8)
+            ,Add#(TLog#(TDiv#(busWidth, 8)), c__, BurstLenSize)
+            ,Add#(d__, TDiv#(busWidth, 8), ByteEnableSize)
+            );
 
    FIFO#(Bit#(32))   addrReqFifo <- mkFIFO;
    Reg#(Bit#(8)) dbgPtr <- mkReg(0);
@@ -138,11 +138,11 @@ module mkMemServerRead#(MemServerIndication indication,
    for(Integer i = 0; i < valueOf(numClients); i = i+1) begin
       Vector#(numMMUs,Server#(AddrTransRequest,Bit#(addrWidth))) ss;
       for(Integer j = 0; j < valueOf(numMMUs); j=j+1)
-	 ss[j] = mmu_servers[j].servers[i];
+         ss[j] = mmu_servers[j].servers[i];
       readers[i] <- mkMemReadInternal(indication,ss);
       read_clients[i] = readers[i].client;
       for(Integer j = 0; j < valueOf(nrc); j=j+1)
-	 read_servers[i*valueOf(nrc)+j] = readers[i].servers[j];
+         read_servers[i*valueOf(nrc)+j] = readers[i].servers[j];
    end
    
    rule mmuEntry;
@@ -154,10 +154,10 @@ module mkMemServerRead#(MemServerIndication indication,
    Stmt dbgStmt = 
    seq
       for(dbgPtr <= 0; dbgPtr < fromInteger(valueOf(numClients)); dbgPtr <= dbgPtr+1)
-	 (action
-	     let rv <- readers[dbgPtr].dbg.dbg;
-	     indication.reportStateDbg(rv);
-	  endaction);
+         (action
+             let rv <- readers[dbgPtr].dbg.dbg;
+             indication.reportStateDbg(rv);
+          endaction);
    endseq;
    FSM dbgFSM <- mkFSM(dbgStmt);
 
@@ -165,10 +165,10 @@ module mkMemServerRead#(MemServerIndication indication,
    seq
       trafficAccum <= 0;
       for(trafficPtr <= 0; trafficPtr < fromInteger(valueOf(numClients)); trafficPtr <= trafficPtr+1)
-	 (action
-	     let rv <- readers[trafficPtr].dbg.getMemoryTraffic();
-	     trafficAccum <= trafficAccum + rv;
-	  endaction);
+         (action
+             let rv <- readers[trafficPtr].dbg.getMemoryTraffic();
+             trafficAccum <= trafficAccum + rv;
+          endaction);
       indication.reportMemoryTraffic(trafficAccum);
    endseq;
    FSM trafficFSM <- mkFSM(trafficStmt);
@@ -177,33 +177,33 @@ module mkMemServerRead#(MemServerIndication indication,
    interface clients = read_clients;
    interface MemServerRequest request;
       method Action setTileState(TileControl tc);
-	 for(Integer i = 0; i < valueOf(numClients); i=i+1)
-	    readers[i].tileControl.put(tc);
+         for(Integer i = 0; i < valueOf(numClients); i=i+1)
+            readers[i].tileControl.put(tc);
       endmethod
       method Action stateDbg(ChannelType rc);
-	 if (rc == ChannelType_Read)
-	    dbgFSM.start;
+         if (rc == ChannelType_Read)
+            dbgFSM.start;
       endmethod
       method Action memoryTraffic(ChannelType rc);
-	 if (rc == ChannelType_Read)
-	    trafficFSM.start;
+         if (rc == ChannelType_Read)
+            trafficFSM.start;
       endmethod
       method Action addrTrans(Bit#(32) pointer, Bit#(32) offset);
-	 addrReqFifo.enq(pointer);
-	 mmus[pointer[31:16]].addr[0].request.put(AddrTransRequest{id:truncate(pointer), off:extend(offset)});
+         addrReqFifo.enq(pointer);
+         mmus[pointer[31:16]].addr[0].request.put(AddrTransRequest{id:truncate(pointer), off:extend(offset)});
       endmethod
    endinterface
 endmodule
-	
+        
 module mkMemServerWrite#(MemServerIndication indication,
-		     Vector#(numMMUs,MMU#(addrWidth)) mmus)
+                     Vector#(numMMUs,MMU#(addrWidth)) mmus)
    (MemServerWrite#(addrWidth, busWidth, numClients, numServers))
    provisos(Mul#(nwc, numClients, numServers)
-	    ,Add#(a__, addrWidth, 64)
-	    ,Add#(TLog#(TDiv#(busWidth, 8)), b__, 8)
-	    ,Add#(TLog#(TDiv#(busWidth, 8)), c__, BurstLenSize)
-	    ,Add#(d__, TDiv#(busWidth, 8), ByteEnableSize)
-	    );
+            ,Add#(a__, addrWidth, 64)
+            ,Add#(TLog#(TDiv#(busWidth, 8)), b__, 8)
+            ,Add#(TLog#(TDiv#(busWidth, 8)), c__, BurstLenSize)
+            ,Add#(d__, TDiv#(busWidth, 8), ByteEnableSize)
+            );
    
    FIFO#(Bit#(32))   addrReqFifo <- mkFIFO;
    Reg#(Bit#(8)) dbgPtr <- mkReg(0);
@@ -221,11 +221,11 @@ module mkMemServerWrite#(MemServerIndication indication,
    for(Integer i = 0; i < valueOf(numClients); i = i+1) begin
       Vector#(numMMUs,Server#(AddrTransRequest,Bit#(addrWidth))) ss;
       for(Integer j = 0; j < valueOf(numMMUs); j=j+1)
-	 ss[j] = mmu_servers[j].servers[i];
+         ss[j] = mmu_servers[j].servers[i];
       writers[i] <- mkMemWriteInternal(indication, ss);
       write_clients[i] = writers[i].client;
       for(Integer j = 0; j < valueOf(nwc); j=j+1)
-	 write_servers[i*valueOf(nwc)+j] = writers[i].servers[j];
+         write_servers[i*valueOf(nwc)+j] = writers[i].servers[j];
    end
    
    rule mmuEntry;
@@ -237,10 +237,10 @@ module mkMemServerWrite#(MemServerIndication indication,
    Stmt dbgStmt = 
    seq
       for(dbgPtr <= 0; dbgPtr < fromInteger(valueOf(numClients)); dbgPtr <= dbgPtr+1)
-	 (action
-	     let rv <- writers[dbgPtr].dbg.dbg;
-	     indication.reportStateDbg(rv);
-	  endaction);
+         (action
+             let rv <- writers[dbgPtr].dbg.dbg;
+             indication.reportStateDbg(rv);
+          endaction);
    endseq;
    FSM dbgFSM <- mkFSM(dbgStmt);
 
@@ -248,10 +248,10 @@ module mkMemServerWrite#(MemServerIndication indication,
    seq
       trafficAccum <= 0;
       for(trafficPtr <= 0; trafficPtr < fromInteger(valueOf(numClients)); trafficPtr <= trafficPtr+1)
-	 (action
-	     let rv <- writers[trafficPtr].dbg.getMemoryTraffic();
-	     trafficAccum <= trafficAccum + rv;
-	  endaction);
+         (action
+             let rv <- writers[trafficPtr].dbg.getMemoryTraffic();
+             trafficAccum <= trafficAccum + rv;
+          endaction);
       indication.reportMemoryTraffic(trafficAccum);
    endseq;
    FSM trafficFSM <- mkFSM(trafficStmt);
@@ -260,37 +260,37 @@ module mkMemServerWrite#(MemServerIndication indication,
    interface clients = write_clients;
    interface MemServerRequest request;
       method Action setTileState(TileControl tc);
-	 for(Integer i = 0; i < valueOf(numClients); i=i+1)
-	    writers[i].tileControl.put(tc);
+         for(Integer i = 0; i < valueOf(numClients); i=i+1)
+            writers[i].tileControl.put(tc);
       endmethod
       method Action stateDbg(ChannelType rc);
-	 if (rc == ChannelType_Write)
-	    dbgFSM.start;
+         if (rc == ChannelType_Write)
+            dbgFSM.start;
       endmethod
       method Action memoryTraffic(ChannelType rc);
-	 if (rc == ChannelType_Write) 
-	    trafficFSM.start;
+         if (rc == ChannelType_Write) 
+            trafficFSM.start;
       endmethod
       method Action addrTrans(Bit#(32) pointer, Bit#(32) offset);
-	 addrReqFifo.enq(pointer);
-	 mmus[pointer[31:16]].addr[1].request.put(AddrTransRequest{id:truncate(pointer), off:extend(offset)});
+         addrReqFifo.enq(pointer);
+         mmus[pointer[31:16]].addr[1].request.put(AddrTransRequest{id:truncate(pointer), off:extend(offset)});
       endmethod
    endinterface
 endmodule
 
 module mkMemServerWithMMU#(Vector#(numReadClients, MemReadClient#(busWidth)) readClients,
-			  Vector#(numWriteClients, MemWriteClient#(busWidth)) writeClients,
-			  MemServerIndication indication,
-			  MMUIndication mmuIndication)(MemServerWithMMU#(addrWidth, busWidth,nMasters))
+                          Vector#(numWriteClients, MemWriteClient#(busWidth)) writeClients,
+                          MemServerIndication indication,
+                          MMUIndication mmuIndication)(MemServerWithMMU#(addrWidth, busWidth,nMasters))
 
    provisos(Add#(TLog#(TDiv#(busWidth, 8)), e__, 8)
-	    ,Add#(TLog#(TDiv#(busWidth, 8)), f__, BurstLenSize)
-	    ,Add#(c__, addrWidth, 64)
-	    ,Add#(d__, addrWidth, MemOffsetSize)
-	    ,Add#(numWriteClients, a__, TMul#(TDiv#(numWriteClients, nMasters),nMasters))
-	    ,Add#(numReadClients, b__, TMul#(TDiv#(numReadClients, nMasters),nMasters))
-	    ,Add#(g__, TDiv#(busWidth, 8), ByteEnableSize)
-	    );
+            ,Add#(TLog#(TDiv#(busWidth, 8)), f__, BurstLenSize)
+            ,Add#(c__, addrWidth, 64)
+            ,Add#(d__, addrWidth, MemOffsetSize)
+            ,Add#(numWriteClients, a__, TMul#(TDiv#(numWriteClients, nMasters),nMasters))
+            ,Add#(numReadClients, b__, TMul#(TDiv#(numReadClients, nMasters),nMasters))
+            ,Add#(g__, TDiv#(busWidth, 8), ByteEnableSize)
+            );
 
    
    MMU#(addrWidth) hostMMU <- mkMMU(0, True, mmuIndication);

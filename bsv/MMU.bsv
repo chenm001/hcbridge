@@ -83,8 +83,8 @@ typedef struct {
    } Region deriving (Eq,Bits,FShow);
 
 typedef struct {DmaErrorType errorType;
-		Bit#(32) pref;
-		Bit#(MemOffsetSize) off;
+                Bit#(32) pref;
+                Bit#(MemOffsetSize) off;
    } DmaError deriving (Bits);
 
 typedef struct {
@@ -109,10 +109,10 @@ typedef struct {
 // the address translation servers (addr[0], addr[1]) have a latency of 8 and are fully pipelined
 module mkMMU#(Integer iid, Bool hostMapped, MMUIndication mmuIndication)(MMU#(addrWidth))
    provisos(Log#(MaxNumSGLists, listIdxSize),
-	    Add#(listIdxSize,8, entryIdxSize),
-	    Add#(a__,addrWidth,MemOffsetSize));
+            Add#(listIdxSize,8, entryIdxSize),
+            Add#(a__,addrWidth,MemOffsetSize));
    
-	    
+            
    let verbose = False;
    TagGen#(MaxNumSGLists) sglId_gen <- mkTagGen();
    rule complete_sglId_gen;
@@ -165,108 +165,108 @@ module mkMMU#(Integer iid, Bool hostMapped, MMUIndication mmuIndication)(MMU#(ad
    
    for (Integer i = 0; i < 2; i=i+1) begin
       rule stage1;  // first read in the address cutoff values between regions
-	 AddrTransRequest req <- toGet(incomingReqs[i]).get();
-	 portsel(regall, i).request.put(BRAMRequest{write:False, responseOnWrite:False,
+         AddrTransRequest req <- toGet(incomingReqs[i]).get();
+         portsel(regall, i).request.put(BRAMRequest{write:False, responseOnWrite:False,
             address:truncate(req.id), datain:?});
-	 reqs0[i].enq(req);
+         reqs0[i].enq(req);
       endrule
 
       // pipeline the address lookup
       rule stage2; // Now compare address cutoffs with requested offset
-	 AddrTransRequest req <- toGet(reqs0[i]).get;
-	 Maybe#(Region) m_regionall <- portsel(regall,i).response.get;
-	 
-	 case (m_regionall) matches 
-	    tagged Valid .regionall: begin
+         AddrTransRequest req <- toGet(reqs0[i]).get;
+         Maybe#(Region) m_regionall <- portsel(regall,i).response.get;
+         
+         case (m_regionall) matches 
+            tagged Valid .regionall: begin
                Page0 off0 = truncate(req.off >> valueOf(SGListPageShift0));
                Page4 off4 = truncate(req.off >> valueOf(SGListPageShift4));
                Page8 off8 = truncate(req.off >> valueOf(SGListPageShift8));
                Page12 off12 = truncate(req.off >> valueOf(SGListPageShift12));
-	       let cond12 = off12 < truncate(regionall.reg12.barrier);
-	       let cond8 = off8 < truncate(regionall.reg8.barrier);
-	       let cond4 = off4 < truncate(regionall.reg4.barrier);
-	       let cond0 = off0 < regionall.reg0.barrier;
-	       
-	       if (verbose) $display("mkMMU::stage2: id=%d off=%h (%h %h %h) (%h %h %h)", req.id, req.off, 
-				     regionall.reg8.barrier, regionall.reg4.barrier, regionall.reg0.barrier,
-				     off8, off4, off0);
-	       
-	       stage3Params[i].enq(Stage3Params {cond12: cond12, cond8: cond8, cond4: cond4, cond0: cond0,
-						 idxOffset12: regionall.reg12.idxOffset,idxOffset8: regionall.reg8.idxOffset,
-						 idxOffset4: regionall.reg4.idxOffset, idxOffset0: regionall.reg0.idxOffset,
-						 req: req });
-	    end
-	    tagged Invalid:
-	       dmaErrorFifos[0].enq(DmaError { errorType: DmaErrorSGLIdInvalid, pref: extend(req.id), off:req.off });
-	 endcase
+               let cond12 = off12 < truncate(regionall.reg12.barrier);
+               let cond8 = off8 < truncate(regionall.reg8.barrier);
+               let cond4 = off4 < truncate(regionall.reg4.barrier);
+               let cond0 = off0 < regionall.reg0.barrier;
+               
+               if (verbose) $display("mkMMU::stage2: id=%d off=%h (%h %h %h) (%h %h %h)", req.id, req.off, 
+                                     regionall.reg8.barrier, regionall.reg4.barrier, regionall.reg0.barrier,
+                                     off8, off4, off0);
+               
+               stage3Params[i].enq(Stage3Params {cond12: cond12, cond8: cond8, cond4: cond4, cond0: cond0,
+                                                 idxOffset12: regionall.reg12.idxOffset,idxOffset8: regionall.reg8.idxOffset,
+                                                 idxOffset4: regionall.reg4.idxOffset, idxOffset0: regionall.reg0.idxOffset,
+                                                 req: req });
+            end
+            tagged Invalid:
+               dmaErrorFifos[0].enq(DmaError { errorType: DmaErrorSGLIdInvalid, pref: extend(req.id), off:req.off });
+         endcase
       endrule
       rule stage3; // Based on results of comparision, select a region, putting it into 'o.pageSize'.  idxOffset holds offset in sglist table of relevant entry
-	 let params <- toGet(stage3Params[i]).get();
-	 AddrTransRequest req = params.req;
-	 Offset o = Offset{pageSize: 0, value: truncate(req.off)};
-	 Bit#(IndexWidth) pbase = 0;
-	 Bit#(IndexWidth) idxOffset = 0;
+         let params <- toGet(stage3Params[i]).get();
+         AddrTransRequest req = params.req;
+         Offset o = Offset{pageSize: 0, value: truncate(req.off)};
+         Bit#(IndexWidth) pbase = 0;
+         Bit#(IndexWidth) idxOffset = 0;
 
-	 if (params.cond12) begin
-	    if (verbose) $display("mkMMU::request: req.id=%h req.off=%h", req.id, req.off);
-	    o.pageSize = 4;
-	    pbase = truncate(req.off>>page_shift12);
-	    idxOffset = params.idxOffset12;
-	 end
-	 else if (params.cond8) begin
-	    if (verbose) $display("mkMMU::request: req.id=%h req.off=%h", req.id, req.off);
-	    o.pageSize = 3;
-	    pbase = truncate(req.off>>page_shift8);
-	    idxOffset = params.idxOffset8;
-	 end
-	 else if (params.cond4) begin
-	    if (verbose) $display("mkMMU::request: req.id=%h req.off=%h", req.id, req.off);
-	    o.pageSize = 2;
-	    pbase = truncate(req.off>>page_shift4);
-	    idxOffset = params.idxOffset4;
-	 end
-	 else if (params.cond0) begin
-	    if (verbose) $display("mkMMU::request: req.id=%h req.off=%h", req.id, req.off);
-	    o.pageSize = 1;
-	    pbase = truncate(req.off>>page_shift0);
-	    idxOffset = params.idxOffset0;
-	 end
-	 stage4Params[i].enq(Stage4Params { off: o, pbase: pbase, idxOffset: idxOffset, ptr: req.id });
+         if (params.cond12) begin
+            if (verbose) $display("mkMMU::request: req.id=%h req.off=%h", req.id, req.off);
+            o.pageSize = 4;
+            pbase = truncate(req.off>>page_shift12);
+            idxOffset = params.idxOffset12;
+         end
+         else if (params.cond8) begin
+            if (verbose) $display("mkMMU::request: req.id=%h req.off=%h", req.id, req.off);
+            o.pageSize = 3;
+            pbase = truncate(req.off>>page_shift8);
+            idxOffset = params.idxOffset8;
+         end
+         else if (params.cond4) begin
+            if (verbose) $display("mkMMU::request: req.id=%h req.off=%h", req.id, req.off);
+            o.pageSize = 2;
+            pbase = truncate(req.off>>page_shift4);
+            idxOffset = params.idxOffset4;
+         end
+         else if (params.cond0) begin
+            if (verbose) $display("mkMMU::request: req.id=%h req.off=%h", req.id, req.off);
+            o.pageSize = 1;
+            pbase = truncate(req.off>>page_shift0);
+            idxOffset = params.idxOffset0;
+         end
+         stage4Params[i].enq(Stage4Params { off: o, pbase: pbase, idxOffset: idxOffset, ptr: req.id });
       endrule
       (* descending_urgency = "stage2, stage4" *)
       rule stage4; // Read relevant sglist entry
-	 let params <- toGet(stage4Params[i]).get();
-	 let off = params.off;
-	 let pbase = params.pbase;
-	 let idxOffset = params.idxOffset;
-	 let ptr = params.ptr;
-	 Bit#(IndexWidth) p = pbase + idxOffset;
-	 if (off.pageSize == 0) begin
-	    if (verbose) $display("mkMMU::addr[%d].request.put: ERROR   ptr=%h off=%h\n", i, ptr, off);
-	    dmaErrorFifos[1].enq(DmaError { errorType: DmaErrorOffsetOutOfRange, pref: extend(ptr), off:extend(off.value) });
-	 end
-	 else begin
-	    if (verbose) $display("mkMMU::translationTable[%d].read %h", i, {ptr,p});
-	    portsel(translationTable, i).request.put(BRAMRequest{write:False, responseOnWrite:False,
-						      address:{ptr,p}, datain:?});
-	    offs1[i].enq(off);
-	 end
+         let params <- toGet(stage4Params[i]).get();
+         let off = params.off;
+         let pbase = params.pbase;
+         let idxOffset = params.idxOffset;
+         let ptr = params.ptr;
+         Bit#(IndexWidth) p = pbase + idxOffset;
+         if (off.pageSize == 0) begin
+            if (verbose) $display("mkMMU::addr[%d].request.put: ERROR   ptr=%h off=%h\n", i, ptr, off);
+            dmaErrorFifos[1].enq(DmaError { errorType: DmaErrorOffsetOutOfRange, pref: extend(ptr), off:extend(off.value) });
+         end
+         else begin
+            if (verbose) $display("mkMMU::translationTable[%d].read %h", i, {ptr,p});
+            portsel(translationTable, i).request.put(BRAMRequest{write:False, responseOnWrite:False,
+                                                      address:{ptr,p}, datain:?});
+            offs1[i].enq(off);
+         end
       endrule
       rule stage5; // Concatenate page base address from sglist entry with LSB offset bits from request and return
-	 Page0 page <- portsel(translationTable, i).response.get;
-	 let offset <- toGet(offs1[i]).get();
-	 if (verbose) $display("mkMMU::p ages[%d].response page=%h offset=%h", i, page, offset);
-	 Bit#(MemOffsetSize) rv = ?;
-	 Page4 b4 = truncate(page);
-	 Page8 b8 = truncate(page);
-	 Page12 b12 = truncate(page);
-	 case (offset.pageSize) 
-	    1: rv = {page,truncate(offset.value)};
-	    2: rv = {b4,truncate(offset.value)};
-	    3: rv = {b8,truncate(offset.value)};
-	    4: rv = {b12,truncate(offset.value)};
-	 endcase
-	 pageResponseFifos[i].enq(truncate(rv));
+         Page0 page <- portsel(translationTable, i).response.get;
+         let offset <- toGet(offs1[i]).get();
+         if (verbose) $display("mkMMU::p ages[%d].response page=%h offset=%h", i, page, offset);
+         Bit#(MemOffsetSize) rv = ?;
+         Page4 b4 = truncate(page);
+         Page8 b8 = truncate(page);
+         Page12 b12 = truncate(page);
+         case (offset.pageSize) 
+            1: rv = {page,truncate(offset.value)};
+            2: rv = {b4,truncate(offset.value)};
+            3: rv = {b8,truncate(offset.value)};
+            4: rv = {b12,truncate(offset.value)};
+         endcase
+         pageResponseFifos[i].enq(truncate(rv));
       endrule
    end
 
@@ -288,20 +288,20 @@ module mkMMU#(Integer iid, Bool hostMapped, MMUIndication mmuIndication)(MMU#(ad
    function Server#(AddrTransRequest,Bit#(addrWidth)) addrServer(Integer i);
    return
       (interface Server#(AddrTransRequest,Bit#(addrWidth));
-	  interface Put request;
-	     method Action put(AddrTransRequest req);
-		incomingReqs[i].enq(req);
-	     endmethod
-	  endinterface
-	  interface Get response;
-	     method ActionValue#(Bit#(addrWidth)) get();
-		let rv <- toGet(pageResponseFifos[i]).get();
+          interface Put request;
+             method Action put(AddrTransRequest req);
+                incomingReqs[i].enq(req);
+             endmethod
+          endinterface
+          interface Get response;
+             method ActionValue#(Bit#(addrWidth)) get();
+                let rv <- toGet(pageResponseFifos[i]).get();
 `ifdef SIMULATION
-		rv = rv | (fromInteger(iid)<<valueOf(addrWidth)-3);
+                rv = rv | (fromInteger(iid)<<valueOf(addrWidth)-3);
 `endif
-		return rv;
-	     endmethod
-	  endinterface
+                return rv;
+             endmethod
+          endinterface
        endinterface);
    endfunction
       
@@ -316,7 +316,7 @@ module mkMMU#(Integer iid, Bool hostMapped, MMUIndication mmuIndication)(MMU#(ad
    method Action idReturn(Bit#(32) sglId);
       idReturnFifo.enq(sglId);
       if (hostMapped)
-	 simDma.idreturn(sglId);
+         simDma.idreturn(sglId);
    endmethod
    method Action region(Bit#(32) pointer, Bit#(64) barr12, Bit#(32) index12, Bit#(64) barr8, Bit#(32) index8, Bit#(64) barr4, Bit#(32) index4, Bit#(64) barr0, Bit#(32) index0);
       portsel(regall, 1).request.put(BRAMRequest{write:True, responseOnWrite:False,
@@ -331,13 +331,13 @@ module mkMMU#(Integer iid, Bool hostMapped, MMUIndication mmuIndication)(MMU#(ad
 
    method Action sglist(Bit#(32) pointer, Bit#(32) pointerIndex, Bit#(64) addr,  Bit#(32) len);
          if (fromInteger(iid) != pointer[31:16]) begin
-	    $display("mkMMU::sglist ERROR");
-	    $finish();
-	 end
-	 if(hostMapped)
-	    let va <- simDma.init({0,pointer[31:16]}, {0,pointer[15:0]}, len);
+            $display("mkMMU::sglist ERROR");
+            $finish();
+         end
+         if(hostMapped)
+            let va <- simDma.init({0,pointer[31:16]}, {0,pointer[15:0]}, len);
          Bit#(IndexWidth) ind = truncate(pointerIndex);
-	 portsel(translationTable, 0).request.put(BRAMRequest{write:True, responseOnWrite:False,
+         portsel(translationTable, 0).request.put(BRAMRequest{write:True, responseOnWrite:False,
              address:{truncate(pointer),ind}, datain:truncate(addr)});
          if (verbose) $display("mkMMU::sglist pointer=%d pointerIndex=%d addr=%d len=%d", pointer, pointerIndex, addr, len);
    endmethod
@@ -366,19 +366,19 @@ module mkArbitratedMMU#(Server#(AddrTransRequest,Bit#(addrWidth)) server) (Arbit
    function Server#(AddrTransRequest,Bit#(addrWidth)) arbitratedServer(Integer i);
    return
       (interface Server#(AddrTransRequest,Bit#(addrWidth));
-	  interface Put request;
-	     method Action put(AddrTransRequest req) if (arb == fromInteger(i));
-		tokFifo.enq(fromInteger(i));
-		server.request.put(req);
-	     endmethod
-	  endinterface
-	  interface Get response;
-	     method ActionValue#(Bit#(addrWidth)) get() if (tokFifo.first == fromInteger(i));
-		tokFifo.deq;
-		let rv <- server.response.get;
-		return rv;
-	     endmethod
-	  endinterface
+          interface Put request;
+             method Action put(AddrTransRequest req) if (arb == fromInteger(i));
+                tokFifo.enq(fromInteger(i));
+                server.request.put(req);
+             endmethod
+          endinterface
+          interface Get response;
+             method ActionValue#(Bit#(addrWidth)) get() if (tokFifo.first == fromInteger(i));
+                tokFifo.deq;
+                let rv <- server.response.get;
+                return rv;
+             endmethod
+          endinterface
        endinterface);
    endfunction
 

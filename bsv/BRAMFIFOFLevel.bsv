@@ -40,15 +40,15 @@ module mkCounter#(Bit#(count_sz) init_val)(Counter#(count_sz));
    (* fire_when_enabled *)
    rule react;
       if (rst_wire)
-	 cnt <= 0;
+         cnt <= 0;
       else if (inc_wire && dec_wire)
-	 noAction;
+         noAction;
       else if (inc_wire)
-	 cnt <= cnt+1;
+         cnt <= cnt+1;
       else if (dec_wire)
-	 cnt <= cnt-1;
+         cnt <= cnt-1;
       else
-	 noAction;
+         noAction;
    endrule
    method Action increment = inc_wire.send;
    method Action decrement = dec_wire.send;
@@ -72,9 +72,9 @@ endinstance
 
 module mkBRAMFIFOFLevel(FIFOFLevel#(element_type, fifo_depth))
    provisos(Log#(fifo_depth, log_fifo_depth),
-	    Add#(log_fifo_depth,1,mark_width),
-	    Bits#(element_type, __a),
-	    Add#(1, a__, __a));
+            Add#(log_fifo_depth,1,mark_width),
+            Bits#(element_type, __a),
+            Add#(1, a__, __a));
 
    Counter#(mark_width) cnt <- mkCounter(0);
    FIFOF#(element_type) fif <- mkSizedBRAMFIFOF(valueOf(fifo_depth));
@@ -89,16 +89,16 @@ module mkBRAMFIFOFLevel(FIFOFLevel#(element_type, fifo_depth))
   
    interface FIFOF fifo;
       method Action enq (element_type x);
-	 cnt.increment;
-	 fif.enq(x);
+         cnt.increment;
+         fif.enq(x);
       endmethod
       method Action deq;
-	 cnt.decrement;
-	 fif.deq;
+         cnt.decrement;
+         fif.deq;
       endmethod
       method Action clear;
-	 cnt.reset;
-	 fif.clear;
+         cnt.reset;
+         fif.clear;
       endmethod
       method element_type first = fif.first;
       method Bool notFull = fif.notFull;
@@ -109,9 +109,9 @@ endmodule
 
 module mkFIFOFLevel(FIFOFLevel#(element_type, fifo_depth))
    provisos(Log#(fifo_depth, log_fifo_depth),
-	    Add#(log_fifo_depth,1,mark_width),
-	    Bits#(element_type, __a),
-	    Add#(1, a__, __a));
+            Add#(log_fifo_depth,1,mark_width),
+            Bits#(element_type, __a),
+            Add#(1, a__, __a));
 
    Counter#(mark_width) cnt <- mkCounter(0);
    FIFOF#(element_type) fif <- mkSizedFIFOF(valueOf(fifo_depth));
@@ -126,16 +126,16 @@ module mkFIFOFLevel(FIFOFLevel#(element_type, fifo_depth))
 
    interface FIFOF fifo;
       method Action enq (element_type x);
-	 cnt.increment;
-	 fif.enq(x);
+         cnt.increment;
+         fif.enq(x);
       endmethod
       method Action deq;
-	 cnt.decrement;
-	 fif.deq;
+         cnt.decrement;
+         fif.deq;
       endmethod
       method Action clear;
-	 cnt.reset;
-	 fif.clear;
+         cnt.reset;
+         fif.clear;
       endmethod
       method element_type first = fif.first;
       method Bool notFull = fif.notFull;

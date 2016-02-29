@@ -77,64 +77,64 @@ module mkBsimCtrlReadWrite(PhysMemMaster#(clientAddrWidth, clientBusWidth))
    endrule
    interface PhysMemReadClient read_client;
      interface Get readReq;
-	 method ActionValue#(PhysMemRequest#(clientAddrWidth,clientBusWidth)) get() if (checkReq0);
-	 //$write("req_ar: ");
-	 let ra <- getRequest32(0);
-	 //$display("ra=%h", ra);
-	 let burstLen = fromInteger(valueOf(clientBusWidth) / 8);
-	 if (verbose) $display("\n%dBsimHost.readReq addr=%h burstLen=%d", cycles, ra, burstLen);
-	 return PhysMemRequest { addr: extend(ra[31:0]), burstLen: burstLen, tag: truncate(ra[63:32])
+         method ActionValue#(PhysMemRequest#(clientAddrWidth,clientBusWidth)) get() if (checkReq0);
+         //$write("req_ar: ");
+         let ra <- getRequest32(0);
+         //$display("ra=%h", ra);
+         let burstLen = fromInteger(valueOf(clientBusWidth) / 8);
+         if (verbose) $display("\n%dBsimHost.readReq addr=%h burstLen=%d", cycles, ra, burstLen);
+         return PhysMemRequest { addr: extend(ra[31:0]), burstLen: burstLen, tag: truncate(ra[63:32])
 `ifdef BYTE_ENABLES
-				, firstbe: maxBound, lastbe: maxBound
+                                , firstbe: maxBound, lastbe: maxBound
 `endif
-				};
-	 endmethod
+                                };
+         endmethod
      endinterface
      interface Put readData;
-	 method Action put(MemData#(clientBusWidth) rd);
-	 //$display("resp_read: rd=%h", rd);
-	 if (verbose) $display("%d BsimHost.readData %h", cycles, rd.data);
-	 readResponse32(truncate(rd.data), extend(rd.tag));
-	 endmethod
+         method Action put(MemData#(clientBusWidth) rd);
+         //$display("resp_read: rd=%h", rd);
+         if (verbose) $display("%d BsimHost.readData %h", cycles, rd.data);
+         readResponse32(truncate(rd.data), extend(rd.tag));
+         endmethod
      endinterface
    endinterface
    interface PhysMemWriteClient write_client;
      interface Get writeReq;
-	 method ActionValue#(PhysMemRequest#(clientAddrWidth,clientBusWidth)) get() if (checkReq1);
-	 let wd <- getRequest32(1);
-	 wf.enq(extend(wd[63:32]));
-	 let burstLen = fromInteger(valueOf(clientBusWidth) / 8);
-	 if (verbose) $display("\n%d BsimHost.writeReq addr/data=%h burstLen=%d", cycles, wd, burstLen);
-	 return PhysMemRequest { addr: extend(wd[31:0]), burstLen: burstLen, tag: 0
+         method ActionValue#(PhysMemRequest#(clientAddrWidth,clientBusWidth)) get() if (checkReq1);
+         let wd <- getRequest32(1);
+         wf.enq(extend(wd[63:32]));
+         let burstLen = fromInteger(valueOf(clientBusWidth) / 8);
+         if (verbose) $display("\n%d BsimHost.writeReq addr/data=%h burstLen=%d", cycles, wd, burstLen);
+         return PhysMemRequest { addr: extend(wd[31:0]), burstLen: burstLen, tag: 0
 `ifdef BYTE_ENABLES
-				, firstbe: maxBound, lastbe: maxBound
+                                , firstbe: maxBound, lastbe: maxBound
 `endif
-				};
-	 endmethod
+                                };
+         endmethod
      endinterface
      interface Get writeData;
-	 method ActionValue#(MemData#(clientBusWidth)) get;
-	 wf.deq;
-	 if (verbose) $display("%d BsimHost.writeData %h", cycles, wf.first);
-	 return MemData { data: wf.first, tag: 0, last: True };
-	 endmethod
+         method ActionValue#(MemData#(clientBusWidth)) get;
+         wf.deq;
+         if (verbose) $display("%d BsimHost.writeData %h", cycles, wf.first);
+         return MemData { data: wf.first, tag: 0, last: True };
+         endmethod
      endinterface
      interface Put writeDone;
-	 method Action put(Bit#(MemTagSize) resp);
-	 if (verbose) $display("%d BsimHost.writeDone %d", cycles, resp);
-	 endmethod
+         method Action put(Bit#(MemTagSize) resp);
+         if (verbose) $display("%d BsimHost.writeDone %d", cycles, resp);
+         endmethod
      endinterface
    endinterface
 endmodule
 
 module  mkBsimHost#(Clock derived_clock, Reset derived_reset)(BsimHost#(clientAddrWidth, clientBusWidth, clientIdWidth,
-			      serverAddrWidth, serverBusWidth, serverIdWidth,
-			      nSlaves))
+                              serverAddrWidth, serverBusWidth, serverIdWidth,
+                              nSlaves))
    provisos (Add#(a__, 32, clientAddrWidth), Add#(b__, 32, clientBusWidth),
-	     Mul#(TDiv#(serverBusWidth, 32), 32, serverBusWidth),
+             Mul#(TDiv#(serverBusWidth, 32), 32, serverBusWidth),
              Mul#(TDiv#(serverBusWidth, 8), 8, serverBusWidth),
-	     Mul#(TDiv#(serverBusWidth, 32), 4, TDiv#(serverBusWidth, 8)),
-	     Add#(c__, ByteEnableSize,TDiv#(serverBusWidth, 8)));
+             Mul#(TDiv#(serverBusWidth, 32), 4, TDiv#(serverBusWidth, 8)),
+             Add#(c__, ByteEnableSize,TDiv#(serverBusWidth, 8)));
 
    Vector#(nSlaves,PhysMemSlave#(serverAddrWidth,  serverBusWidth)) servers <- replicateM(mkSimDmaDmaMaster);
    PhysMemMaster#(clientAddrWidth, clientBusWidth) crw <- mkBsimCtrlReadWrite();

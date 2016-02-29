@@ -70,19 +70,19 @@ typedef TDiv#(WriteDataBurstLen,4) WriteDataMimoSize; // number of words to hold
 typedef BurstLenSize WriteDataBurstLenSize;
 module mkMemToPcie#(PciId my_id)(MemToPcie#(buswidth))
    provisos (Div#(buswidth, 8, busWidthBytes),
-	     Div#(buswidth, 32, busWidthWords),
-	     Bits#(Vector#(busWidthWords, Bit#(32)), buswidth),
-	     Log#(busWidthBytes,beatShift),
-	     Add#(aaa, 32, buswidth),
-	     Add#(bbb, buswidth, 256),
-	     Add#(ccc, TMul#(8, busWidthWords), 64),
-	     Add#(ddd, TMul#(32, busWidthWords), 256),
-	     Add#(eee, busWidthWords, 8),
-	     Add#(1, a__, busWidthWords),
-	     Add#(b__, busWidthWords, TlpDataWords),
-	     Add#(c__, busWidthWords, WriteDataMimoSize),
-	     Add#(0,16,TlpDataBytes)
-	     );
+             Div#(buswidth, 32, busWidthWords),
+             Bits#(Vector#(busWidthWords, Bit#(32)), buswidth),
+             Log#(busWidthBytes,beatShift),
+             Add#(aaa, 32, buswidth),
+             Add#(bbb, buswidth, 256),
+             Add#(ccc, TMul#(8, busWidthWords), 64),
+             Add#(ddd, TMul#(32, busWidthWords), 256),
+             Add#(eee, busWidthWords, 8),
+             Add#(1, a__, busWidthWords),
+             Add#(b__, busWidthWords, TlpDataWords),
+             Add#(c__, busWidthWords, WriteDataMimoSize),
+             Add#(0,16,TlpDataBytes)
+             );
 
     let beat_shift = fromInteger(valueOf(beatShift));
 
@@ -144,14 +144,14 @@ module mkMemToPcie#(PciId my_id)(MemToPcie#(buswidth))
 
       TLPMemoryIO3DWHeader hdr_3dw = unpack(truncate(tlp.data));
       if (is3dw) begin
-	 if (hdr_3dw.format != MEM_WRITE_3DW_DATA)
-	    $display("MemToPcie: expecting MEM_WRITE_3DW_DATA, got %d", hdr_3dw.format);
-	 Vector#(TlpDataWords, Bit#(32)) v = unpack(0);
+         if (hdr_3dw.format != MEM_WRITE_3DW_DATA)
+            $display("MemToPcie: expecting MEM_WRITE_3DW_DATA, got %d", hdr_3dw.format);
+         Vector#(TlpDataWords, Bit#(32)) v = unpack(0);
          tlp.sof = True;
 `ifdef AXI
          v = writeDataMimo.first();
-	 writeDataMimo.deq(1);
-	 hdr_3dw.data = byteSwap(v[0]);
+         writeDataMimo.deq(1);
+         hdr_3dw.data = byteSwap(v[0]);
          tlp.eof = (dwCount == 1) ? True : False;
          dwCount = dwCount - 1;
          writeDataCnt.decrement(1);
@@ -172,12 +172,12 @@ module mkMemToPcie#(PciId my_id)(MemToPcie#(buswidth))
             writeDataCnt.decrement(1);
          end
 `endif
-	 tlp.be = 'hffff;
-	 tlp.data = extend(pack(hdr_3dw));
+         tlp.be = 'hffff;
+         tlp.data = extend(pack(hdr_3dw));
       end
       else begin
          quadAlignedTlpHandled <= isQuadWordAligned(getLowerAddr(truncate(unpack(hdr_4dw.addr)), hdr_4dw.firstbe));
-	 tlp.be = 'hffff;
+         tlp.be = 'hffff;
       end
 
       tlpOutFifo.enq(tlp);
@@ -187,8 +187,8 @@ module mkMemToPcie#(PciId my_id)(MemToPcie#(buswidth))
       lastTlp <= (dwCount <= fromInteger(valueOf(TlpDataWords)));
       writeInProgress <= (dwCount != 0);
       if (isHeaderOnly) begin
-	 doneTag.enq(writeTag.first());
-	 writeTag.deq();
+         doneTag.enq(writeTag.first());
+         writeTag.deq();
       end
 
    endrule
@@ -218,21 +218,21 @@ module mkMemToPcie#(PciId my_id)(MemToPcie#(buswidth))
       tlp.be = maxBound << (4*(fromInteger(valueOf(TlpDataWords))-tlpDwCount));
       tlp.eof = lastTlp;
       if (lastTlp) begin
-	 writeInProgress <= False;
-	 doneTag.enq(writeTag.first());
-	 writeTag.deq();
-	 $display("writeDwCount=%d will be zero", writeDwCount);
+         writeInProgress <= False;
+         doneTag.enq(writeTag.first());
+         writeTag.deq();
+         $display("writeDwCount=%d will be zero", writeDwCount);
       end
 
       for (Integer i = 0; i < currDwCount; i = i + 1) begin
 `ifdef AXI
 `ifdef PCIE3
-	 tlp.data[(i+1)*32-1:i*32] = v[i];
+         tlp.data[(i+1)*32-1:i*32] = v[i];
 `else
-	 tlp.data[(i+1)*32-1:i*32] = byteSwap(v[(currDwCount-1)-i]);
+         tlp.data[(i+1)*32-1:i*32] = byteSwap(v[(currDwCount-1)-i]);
 `endif
 `elsif AVALON
-	 tlp.data[(i+1)*32-1:i*32] = v[(currDwCount-1)-i];
+         tlp.data[(i+1)*32-1:i*32] = v[(currDwCount-1)-i];
 `endif
       end
 
@@ -265,32 +265,32 @@ module mkMemToPcie#(PciId my_id)(MemToPcie#(buswidth))
 `endif
       if (!tlp.sof) begin
 `ifdef PCIE3
-	 vec = tlpvec;
+         vec = tlpvec;
 `else
-	 vec = reverse(tlpvec);
+         vec = reverse(tlpvec);
 `endif
-	 // The MIMO implicit guard only checks for space to enqueue 1 element
-	 // so we explicitly check for the number of elements required
-	 // otherwise elements in the queue will be overwritten.
-	 if (completionMimo.enqReady()
-	    && completionTagMimo.enqReady())
-	    begin
-	       LUInt#(TlpDataWords) count = fromInteger(valueOf(TlpDataWords));
-	       if (tlp.eof) begin
-		  count = truncate(unpack(wordCountReg));
-	       end
-	       wordCount = wordCountReg - extend(pack(count));
-	       completionMimo.enq(count, vec);
-	       function Tuple2#(TLPTag,Bool) taglast(Integer i); return tuple2(lastTag, (fromInteger(i) == (count-1)) ? tlp.eof : False); endfunction
-	       Vector#(TlpDataWords, Tuple2#(TLPTag,Bool)) tagvec = genWith(taglast);
-	       completionTagMimo.enq(count, tagvec);
-	       handled = True;
-	    end
+         // The MIMO implicit guard only checks for space to enqueue 1 element
+         // so we explicitly check for the number of elements required
+         // otherwise elements in the queue will be overwritten.
+         if (completionMimo.enqReady()
+            && completionTagMimo.enqReady())
+            begin
+               LUInt#(TlpDataWords) count = fromInteger(valueOf(TlpDataWords));
+               if (tlp.eof) begin
+                  count = truncate(unpack(wordCountReg));
+               end
+               wordCount = wordCountReg - extend(pack(count));
+               completionMimo.enq(count, vec);
+               function Tuple2#(TLPTag,Bool) taglast(Integer i); return tuple2(lastTag, (fromInteger(i) == (count-1)) ? tlp.eof : False); endfunction
+               Vector#(TlpDataWords, Tuple2#(TLPTag,Bool)) tagvec = genWith(taglast);
+               completionTagMimo.enq(count, tagvec);
+               handled = True;
+            end
       end
       else if (hdr_3dw.format == MEM_WRITE_3DW_DATA
-	       && hdr_3dw.pkttype == COMPLETION
-	       && completionMimo.enqReady()
-	       && completionTagMimo.enqReady()) begin
+               && hdr_3dw.pkttype == COMPLETION
+               && completionMimo.enqReady()
+               && completionTagMimo.enqReady()) begin
             TLPTag tag = hdr_completion.tag;
             lastTag <= tag;
             if (!dataInSecondTlp) begin
@@ -299,12 +299,12 @@ module mkMemToPcie#(PciId my_id)(MemToPcie#(buswidth))
                completionMimo.enq(1, vec);
                completionTagMimo.enq(1, replicate(tuple2(tag,tlp.eof)));
             end
-	    handled = True;
+            handled = True;
       end
       wordCountReg <= wordCount;
       $display("tlpIn handled=%d tlp=%h\n", handled, tlp);
       if (handled) begin
-	 tlpDecodeFifo.deq();
+         tlpDecodeFifo.deq();
       end
    endrule
 
@@ -321,34 +321,34 @@ module mkMemToPcie#(PciId my_id)(MemToPcie#(buswidth))
       tlp.hit = 7'h00;
       TLPLength tlplen = fromInteger(valueOf(busWidthWords))*truncate(burstLen);
       if (addr[39:32] != 0) begin
-	 TLPMemory4DWHeader hdr_4dw = defaultValue;
-	 hdr_4dw.format = MEM_READ_4DW_NO_DATA;
-	 hdr_4dw.tag = extend(arid);
-	 hdr_4dw.reqid = my_id;
-	 hdr_4dw.nosnoop = SNOOPING_REQD;
-	 hdr_4dw.addr = addr[40-1:2];
-	 hdr_4dw.length = tlplen;
-	 Bit#(TDiv#(buswidth,8)) firstbe = reqFirstByteEnable(req);
-	 Bit#(TDiv#(buswidth,8)) lastbe = reqLastByteEnable(req);
-	 hdr_4dw.firstbe = firstbe[3:0];
-	 hdr_4dw.lastbe = (tlplen > 1) ? lastbe[valueOf(busWidthBytes)-1:valueOf(busWidthBytes)-4] : 0;
-	 tlp.data = extend(pack(hdr_4dw));
-	 tlp.be = 'hffff;
+         TLPMemory4DWHeader hdr_4dw = defaultValue;
+         hdr_4dw.format = MEM_READ_4DW_NO_DATA;
+         hdr_4dw.tag = extend(arid);
+         hdr_4dw.reqid = my_id;
+         hdr_4dw.nosnoop = SNOOPING_REQD;
+         hdr_4dw.addr = addr[40-1:2];
+         hdr_4dw.length = tlplen;
+         Bit#(TDiv#(buswidth,8)) firstbe = reqFirstByteEnable(req);
+         Bit#(TDiv#(buswidth,8)) lastbe = reqLastByteEnable(req);
+         hdr_4dw.firstbe = firstbe[3:0];
+         hdr_4dw.lastbe = (tlplen > 1) ? lastbe[valueOf(busWidthBytes)-1:valueOf(busWidthBytes)-4] : 0;
+         tlp.data = extend(pack(hdr_4dw));
+         tlp.be = 'hffff;
       end
       else begin
-	 TLPMemoryIO3DWHeader hdr_3dw = defaultValue;
-	 hdr_3dw.format = MEM_READ_3DW_NO_DATA;
-	 hdr_3dw.tag = extend(arid);
-	 hdr_3dw.reqid = my_id;
-	 hdr_3dw.nosnoop = SNOOPING_REQD;
-	 hdr_3dw.addr = addr[32-1:2];
-	 hdr_3dw.length = tlplen;
-	 Bit#(TDiv#(buswidth,8)) firstbe = reqFirstByteEnable(req);
-	 Bit#(TDiv#(buswidth,8)) lastbe = reqLastByteEnable(req);
-	 hdr_3dw.firstbe = firstbe[3:0];
-	 hdr_3dw.lastbe = (tlplen > 1) ? lastbe[valueOf(busWidthBytes)-1:valueOf(busWidthBytes)-4] : 0;
-	 tlp.data = extend(pack(hdr_3dw));
-	 tlp.be = 'hfff0;
+         TLPMemoryIO3DWHeader hdr_3dw = defaultValue;
+         hdr_3dw.format = MEM_READ_3DW_NO_DATA;
+         hdr_3dw.tag = extend(arid);
+         hdr_3dw.reqid = my_id;
+         hdr_3dw.nosnoop = SNOOPING_REQD;
+         hdr_3dw.addr = addr[32-1:2];
+         hdr_3dw.length = tlplen;
+         Bit#(TDiv#(buswidth,8)) firstbe = reqFirstByteEnable(req);
+         Bit#(TDiv#(buswidth,8)) lastbe = reqLastByteEnable(req);
+         hdr_3dw.firstbe = firstbe[3:0];
+         hdr_3dw.lastbe = (tlplen > 1) ? lastbe[valueOf(busWidthBytes)-1:valueOf(busWidthBytes)-4] : 0;
+         tlp.data = extend(pack(hdr_3dw));
+         tlp.be = 'hfff0;
       end
       tlpOutFifo.enq(tlp);
    endrule
@@ -361,112 +361,112 @@ module mkMemToPcie#(PciId my_id)(MemToPcie#(buswidth))
    interface PhysMemWriteServer write_server; 
       interface Put writeReq;
          method Action put(PhysMemRequest#(40,buswidth) req); // if (writeBurstCount == 0);
-	    Bit#(WriteDataBurstLenSize) burstLen = truncate(req.burstLen >> beat_shift);
-	    let addr = req.addr;
-	    let awid = req.tag;
-	    let writeIs3dw = False;
-	    let use3dw = True;
+            Bit#(WriteDataBurstLenSize) burstLen = truncate(req.burstLen >> beat_shift);
+            let addr = req.addr;
+            let awid = req.tag;
+            let writeIs3dw = False;
+            let use3dw = True;
 `ifdef PCIE3
-	    awid = awid | (1 << (valueOf(MemTagSize)-1));
-	    use3dw = False;
+            awid = awid | (1 << (valueOf(MemTagSize)-1));
+            use3dw = False;
 `endif
-	    TLPLength tlplen = fromInteger(valueOf(busWidthWords))*truncate(burstLen);
-	    TLPData#(TlpDataBytes) tlp = defaultValue;
-	    tlp.sof = True;
-	    tlp.eof = False;
-	    tlp.hit = 7'h00;
-	    tlp.be = 'hffff;
+            TLPLength tlplen = fromInteger(valueOf(busWidthWords))*truncate(burstLen);
+            TLPData#(TlpDataBytes) tlp = defaultValue;
+            tlp.sof = True;
+            tlp.eof = False;
+            tlp.hit = 7'h00;
+            tlp.be = 'hffff;
 
-	    $display("slave.writeAddr tlplen=%d burstLen=%d", tlplen, burstLen);
-	    if ((addr >> 32) != 0 || !use3dw) begin
-	       TLPMemory4DWHeader hdr_4dw = defaultValue;
-	       hdr_4dw.format = MEM_WRITE_4DW_DATA;
-	       hdr_4dw.tag = extend(awid);
-	       hdr_4dw.reqid = my_id;
-	       hdr_4dw.nosnoop = SNOOPING_REQD;
-	       hdr_4dw.addr = addr[40-1:2];
-	       hdr_4dw.length = tlplen;
-	       Bit#(TDiv#(buswidth,8)) firstbe = reqFirstByteEnable(req);
-	       Bit#(TDiv#(buswidth,8)) lastbe = reqLastByteEnable(req);
-	       hdr_4dw.firstbe = firstbe[3:0];
-	       hdr_4dw.lastbe = (tlplen > 1) ? lastbe[valueOf(busWidthBytes)-1:valueOf(busWidthBytes)-4] : 0;
-	       tlp.data = extend(pack(hdr_4dw));
-	    end
-	    else begin
-	       writeIs3dw = True;
-	       TLPMemoryIO3DWHeader hdr_3dw = defaultValue;
-	       hdr_3dw.format = MEM_WRITE_3DW_DATA;
-	       hdr_3dw.tag = extend(awid);
-	       hdr_3dw.reqid = my_id;
-	       hdr_3dw.nosnoop = SNOOPING_REQD;
-	       hdr_3dw.addr = addr[32-1:2];
-	       hdr_3dw.length = tlplen;
-	       Bit#(TDiv#(buswidth,8)) firstbe = reqFirstByteEnable(req);
-	       Bit#(TDiv#(buswidth,8)) lastbe = reqLastByteEnable(req);
-	       hdr_3dw.firstbe = firstbe[3:0];
-	       hdr_3dw.lastbe = (tlplen > 1) ? lastbe[valueOf(busWidthBytes)-1:valueOf(busWidthBytes)-4] : 0;
-	       tlp.be = 'hfff0; // no data word in this TLP
+            $display("slave.writeAddr tlplen=%d burstLen=%d", tlplen, burstLen);
+            if ((addr >> 32) != 0 || !use3dw) begin
+               TLPMemory4DWHeader hdr_4dw = defaultValue;
+               hdr_4dw.format = MEM_WRITE_4DW_DATA;
+               hdr_4dw.tag = extend(awid);
+               hdr_4dw.reqid = my_id;
+               hdr_4dw.nosnoop = SNOOPING_REQD;
+               hdr_4dw.addr = addr[40-1:2];
+               hdr_4dw.length = tlplen;
+               Bit#(TDiv#(buswidth,8)) firstbe = reqFirstByteEnable(req);
+               Bit#(TDiv#(buswidth,8)) lastbe = reqLastByteEnable(req);
+               hdr_4dw.firstbe = firstbe[3:0];
+               hdr_4dw.lastbe = (tlplen > 1) ? lastbe[valueOf(busWidthBytes)-1:valueOf(busWidthBytes)-4] : 0;
+               tlp.data = extend(pack(hdr_4dw));
+            end
+            else begin
+               writeIs3dw = True;
+               TLPMemoryIO3DWHeader hdr_3dw = defaultValue;
+               hdr_3dw.format = MEM_WRITE_3DW_DATA;
+               hdr_3dw.tag = extend(awid);
+               hdr_3dw.reqid = my_id;
+               hdr_3dw.nosnoop = SNOOPING_REQD;
+               hdr_3dw.addr = addr[32-1:2];
+               hdr_3dw.length = tlplen;
+               Bit#(TDiv#(buswidth,8)) firstbe = reqFirstByteEnable(req);
+               Bit#(TDiv#(buswidth,8)) lastbe = reqLastByteEnable(req);
+               hdr_3dw.firstbe = firstbe[3:0];
+               hdr_3dw.lastbe = (tlplen > 1) ? lastbe[valueOf(busWidthBytes)-1:valueOf(busWidthBytes)-4] : 0;
+               tlp.be = 'hfff0; // no data word in this TLP
 
-	       tlp.data = extend(pack(hdr_3dw));
-	    end
-	    tlpWriteHeaderFifo.enq(TlpWriteHeaderInfo {tlp: tlp, dwCount: tlplen, is3dw: writeIs3dw, isHeaderOnly: (writeIs3dw && tlplen == 1) });
-	    writeBurstCountFifo.enq(burstLen);
-	    writeTag.enq(extend(awid));
+               tlp.data = extend(pack(hdr_3dw));
+            end
+            tlpWriteHeaderFifo.enq(TlpWriteHeaderInfo {tlp: tlp, dwCount: tlplen, is3dw: writeIs3dw, isHeaderOnly: (writeIs3dw && tlplen == 1) });
+            writeBurstCountFifo.enq(burstLen);
+            writeTag.enq(extend(awid));
          endmethod
-	endinterface
+        endinterface
       interface Put writeData;
          method Action put(MemData#(buswidth) wdata)
-	    provisos (Bits#(Vector#(busWidthWords, Bit#(32)), busWidth)) if (writeDataMimoHasRoom); //.enqReadyN(fromInteger(valueOf(busWidthWords))));
+            provisos (Bits#(Vector#(busWidthWords, Bit#(32)), busWidth)) if (writeDataMimoHasRoom); //.enqReadyN(fromInteger(valueOf(busWidthWords))));
 
-	    let burstLen = writeBurstCount;
-	    if (burstLen == 0) begin
-	       burstLen <- toGet(writeBurstCountFifo).get();
-	    end
-	    writeBurstCount <= extend(burstLen-1);
+            let burstLen = writeBurstCount;
+            if (burstLen == 0) begin
+               burstLen <- toGet(writeBurstCountFifo).get();
+            end
+            writeBurstCount <= extend(burstLen-1);
 
-	    Vector#(busWidthWords, Bit#(32)) v = unpack(wdata.data);
-	    writeDataMimo.enq(fromInteger(valueOf(busWidthWords)), v);
+            Vector#(busWidthWords, Bit#(32)) v = unpack(wdata.data);
+            writeDataMimo.enq(fromInteger(valueOf(busWidthWords)), v);
             writeDataCnt.increment(fromInteger(valueOf(busWidthWords)));
-	    writeDataMimoEnqWire <= True;
+            writeDataMimoEnqWire <= True;
          endmethod
        endinterface
       interface Get writeDone;
          method ActionValue#(Bit#(MemTagSize)) get();
-	      let tag = doneTag.first();
-	      doneTag.deq();
-	      return truncate(tag);
+              let tag = doneTag.first();
+              doneTag.deq();
+              return truncate(tag);
            endmethod
-	endinterface
+        endinterface
    endinterface
    interface PhysMemReadServer read_server;
       interface Put readReq;
          method Action put(PhysMemRequest#(40,buswidth) req);
-	    readReqFifo.enq(req);
+            readReqFifo.enq(req);
          endmethod
        endinterface
       interface Get     readData;
          method ActionValue#(MemData#(buswidth)) get() if (completionMimo.deqReady()
-							   && completionTagMimo.deqReady());
-	      let data_v = completionMimo.first;
-	      let tag_last_v = completionTagMimo.first;
-	      match { .tag, .last } = tag_last_v[fromInteger(valueOf(busWidthWords))-1];
-	      completionMimo.deq();
-	      completionTagMimo.deq();
+                                                           && completionTagMimo.deqReady());
+              let data_v = completionMimo.first;
+              let tag_last_v = completionTagMimo.first;
+              match { .tag, .last } = tag_last_v[fromInteger(valueOf(busWidthWords))-1];
+              completionMimo.deq();
+              completionTagMimo.deq();
               Bit#(buswidth) v = 0;
               for (Integer i = 0; i < valueOf(busWidthWords); i = i+1) begin
 `ifdef AXI
 `ifdef PCIE3
-		 v[(i+1)*32-1:i*32] = data_v[i];
+                 v[(i+1)*32-1:i*32] = data_v[i];
 `else
-		 v[(i+1)*32-1:i*32] = byteSwap(data_v[i]);
+                 v[(i+1)*32-1:i*32] = byteSwap(data_v[i]);
 `endif
 `elsif AVALON
-		 v[(i+1)*32-1:i*32] = data_v[i];
+                 v[(i+1)*32-1:i*32] = data_v[i];
 `endif
               end
-	      return MemData { data: v, tag: truncate(tag), last: last}; // last beat of this response burst
+              return MemData { data: v, tag: truncate(tag), last: last}; // last beat of this response burst
            endmethod
-	endinterface
+        endinterface
    endinterface
     endinterface: slave
    method Bool tlpOutFifoNotEmpty() = tlpOutFifo.notEmpty;

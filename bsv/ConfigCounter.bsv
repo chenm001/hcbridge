@@ -50,11 +50,11 @@ module mkConfigCounter#(UInt#(count_sz) init_val)(ConfigCounter#(count_sz));
    endmethod
    method ActionValue#(Bool) maybeDecrement(UInt#(count_sz) x);
       if (cnt >= x) begin
-	 dec_wire <= x;
-	 return True;
+         dec_wire <= x;
+         return True;
       end
       else
-	 return False;
+         return False;
    endmethod
    method UInt#(count_sz) read = cnt._read;
    method Bool positive = positive_reg._read;

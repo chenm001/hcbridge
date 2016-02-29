@@ -32,10 +32,10 @@ import Vector            :: *;
 import AxiMasterSlave    :: *;
 import MemTypes          :: *;
 
-// this interface should allow for different master and slave bus paraters;		 
+// this interface should allow for different master and slave bus paraters;                 
 interface BsimHost#(numeric type clientAddrWidth, numeric type clientBusWidth, numeric type clientIdWidth,  
-		    numeric type serverAddrWidth, numeric type serverBusWidth, numeric type serverIdWidth,
-		    numeric type nSlaves);
+                    numeric type serverAddrWidth, numeric type serverBusWidth, numeric type serverIdWidth,
+                    numeric type nSlaves);
    interface PhysMemMaster#(clientAddrWidth, clientBusWidth)  mem_client;
    interface Vector#(nSlaves,PhysMemSlave#(serverAddrWidth,  serverBusWidth))  mem_servers;
    interface Clock derivedClock;

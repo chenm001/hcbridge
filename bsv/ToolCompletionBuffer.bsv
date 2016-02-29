@@ -69,10 +69,10 @@ module mkTagGen(TagGen#(numTags))
       //let rv = tags[tail_ptr];
       let rv = tags[1][tail_ptr] == 1;
       if (!rv) begin
-	 tail_ptr <= tail_ptr+1;
-	 counter.increment(1);
-	 comp_state <= comp_state >> 1;
-	 comp_fifo.enq(tail_ptr);
+         tail_ptr <= tail_ptr+1;
+         counter.increment(1);
+         comp_state <= comp_state >> 1;
+         comp_fifo.enq(tail_ptr);
       end
    endrule
    
@@ -84,9 +84,9 @@ module mkTagGen(TagGen#(numTags))
       //tags.portB.request.put(BRAMRequest{write:True, responseOnWrite:False, address:tag, datain:False});
       //tags[tag] <= False;
       begin
-	 let t = tags[0];
-	 t[tag] = 0;
-	 tags[0] <= t;
+         let t = tags[0];
+         t[tag] = 0;
+         tags[0] <= t;
       end
       comp_state <= 1 | (comp_state << 1);
    endrule
@@ -102,9 +102,9 @@ module mkTagGen(TagGen#(numTags))
       //tags.portA.request.put(BRAMRequest{write:True, responseOnWrite:False, address:head_ptr, datain:True});
       //tags[head_ptr] <= True;
       begin
-	 let t = tags[1];
-	 t[head_ptr] = 1;
-	 tags[1] <= t;
+         let t = tags[1];
+         t[head_ptr] = 1;
+         tags[1] <= t;
       end
       head_ptr <= head_ptr+1;
       tagFifo.enq(head_ptr);

@@ -42,7 +42,7 @@ endinterface
 
 module mkAddressGenerator(AddressGenerator#(addrWidth, dataWidth))
    provisos (Div#(dataWidth,8,dataWidthBytes),
-	     Log#(dataWidthBytes,beatShift));
+             Log#(dataWidthBytes,beatShift));
    FIFOF#(PhysMemRequest#(addrWidth,dataWidth)) requestFifo <- mkFIFOF1();
    FIFOF#(AddrBeat#(addrWidth)) addrBeatFifo <- mkFIFOF();
    Reg#(Bit#(addrWidth)) addrReg <- mkReg(0);
@@ -56,9 +56,9 @@ module mkAddressGenerator(AddressGenerator#(addrWidth, dataWidth))
       let burstCount = burstCountReg;
       let isLast = isLastReg;
       if (isFirstReg) begin
-	 addr = req.addr;
-	 burstCount = req.burstLen >> valueOf(beatShift);
-	 isLast = (req.burstLen == fromInteger(valueOf(dataWidthBytes)));
+         addr = req.addr;
+         burstCount = req.burstLen >> valueOf(beatShift);
+         isLast = (req.burstLen == fromInteger(valueOf(dataWidthBytes)));
          //$display("addr=%h, burstCount=%h, isLast=%h", addr, burstCount, isLast);
       end
 
@@ -70,8 +70,8 @@ module mkAddressGenerator(AddressGenerator#(addrWidth, dataWidth))
       isLastReg <= nextIsLast;
       Bool nextIsFirst = False;
       if (isLast) begin
-	 requestFifo.deq();
-	 nextIsFirst = True;
+         requestFifo.deq();
+         nextIsFirst = True;
       end
       isFirstReg <= nextIsFirst;
 
@@ -81,13 +81,13 @@ module mkAddressGenerator(AddressGenerator#(addrWidth, dataWidth))
 
    interface Put request;
       method Action put(PhysMemRequest#(addrWidth,dataWidth) req);
-	 requestFifo.enq(req);
+         requestFifo.enq(req);
       endmethod
    endinterface
    interface Get addrBeat;
       method ActionValue#(AddrBeat#(addrWidth)) get();
-	 addrBeatFifo.deq();
-	 return addrBeatFifo.first();
+         addrBeatFifo.deq();
+         return addrBeatFifo.first();
       endmethod
    endinterface
 endmodule

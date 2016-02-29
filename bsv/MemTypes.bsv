@@ -78,7 +78,7 @@ typedef struct {
 instance DefaultValue#(PhysMemRequest#(addrWidth,dataBusWidth));
    defaultValue = PhysMemRequest { addr: 0, burstLen: 0, tag: 0
 `ifdef BYTE_ENABLES
-				  , firstbe: maxBound, lastbe: maxBound
+                                  , firstbe: maxBound, lastbe: maxBound
 `endif
       };
 endinstance
@@ -139,11 +139,11 @@ endinstance
 //
 
 typedef struct {SGLId sglId;
-		Bit#(32) base;
-		Bit#(BurstLenSize) burstLen;
-		Bit#(32) len;
-		Bit#(MemTagSize) tag;
-		} MemengineCmd deriving (Eq,Bits);
+                Bit#(32) base;
+                Bit#(BurstLenSize) burstLen;
+                Bit#(32) len;
+                Bit#(MemTagSize) tag;
+                } MemengineCmd deriving (Eq,Bits);
 
 interface MemWriteEngineServer#(numeric type userWidth);
    interface Put#(MemengineCmd)       request;
@@ -256,12 +256,12 @@ endinterface
 instance Connectable#(MemReadClient#(dsz), MemReadServer#(dsz));
    module mkConnection#(MemReadClient#(dsz) source, MemReadServer#(dsz) sink)(Empty);
       rule mr_request;
-	 let req <- source.readReq.get();
-	 sink.readReq.put(req);
+         let req <- source.readReq.get();
+         sink.readReq.put(req);
       endrule
       rule mr_response;
-	 let resp <- sink.readData.get();
-	 source.readData.put(resp);
+         let resp <- sink.readData.get();
+         source.readData.put(resp);
       endrule
    endmodule
 endinstance
@@ -269,16 +269,16 @@ endinstance
 instance Connectable#(MemWriteClient#(dsz), MemWriteServer#(dsz));
    module mkConnection#(MemWriteClient#(dsz) source, MemWriteServer#(dsz) sink)(Empty);
       rule mw_request;
-	 let req <- source.writeReq.get();
-	 sink.writeReq.put(req);
+         let req <- source.writeReq.get();
+         sink.writeReq.put(req);
       endrule
       rule mw_response;
-	 let resp <- source.writeData.get();
-	 sink.writeData.put(resp);
+         let resp <- source.writeData.get();
+         sink.writeData.put(resp);
       endrule
       rule mw_done;
-	 let resp <- sink.writeDone.get();
-	 source.writeDone.put(resp);
+         let resp <- sink.writeDone.get();
+         source.writeDone.put(resp);
       endrule
    endmodule
 endinstance
@@ -298,21 +298,21 @@ instance Connectable#(PhysMemMaster#(32, busWidth), PhysMemSlave#(40, busWidth))
    module mkConnection#(PhysMemMaster#(32, busWidth) m, PhysMemSlave#(40, busWidth) s)(Empty);
       //mkConnection(m.read_client.readReq, s.read_server.readReq);
       rule readreq;
-	 let req <- m.read_client.readReq.get();
-	 s.read_server.readReq.put(PhysMemRequest { addr: extend(req.addr), burstLen: req.burstLen, tag: req.tag
+         let req <- m.read_client.readReq.get();
+         s.read_server.readReq.put(PhysMemRequest { addr: extend(req.addr), burstLen: req.burstLen, tag: req.tag
 `ifdef BYTE_ENABLES
-						   , firstbe: req.firstbe, lastbe: req.lastbe
+                                                   , firstbe: req.firstbe, lastbe: req.lastbe
 `endif
-	    });
+            });
       endrule
 
       mkConnection(s.read_server.readData, m.read_client.readData);
       //mkConnection(m.write_client.writeReq, s.write_server.writeReq);
       rule writereq;
-	 let req <- m.write_client.writeReq.get();
-	 s.write_server.writeReq.put(PhysMemRequest { addr: extend(req.addr), burstLen: req.burstLen, tag: req.tag
+         let req <- m.write_client.writeReq.get();
+         s.write_server.writeReq.put(PhysMemRequest { addr: extend(req.addr), burstLen: req.burstLen, tag: req.tag
 `ifdef BYTE_ENABLES
-						     , firstbe: req.firstbe, lastbe: req.lastbe
+                                                     , firstbe: req.firstbe, lastbe: req.lastbe
 `endif
  });
       endrule
