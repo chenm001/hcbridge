@@ -92,8 +92,7 @@ void PortalPoller::addFd(int fd)
      * since it can be called from addFdToPoller(), which was called under mutex lock
      * event().
      */
-    numFds++;
-    struct pollfd *pollfd = &portal_fds[numFds-1];
+    struct pollfd *pollfd = &portal_fds[numFds++];
     memset(pollfd, 0, sizeof(struct pollfd));
     pollfd->fd = fd;
     pollfd->events = POLLIN;

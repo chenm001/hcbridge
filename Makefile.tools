@@ -107,7 +107,7 @@ endif
 endif
 
 INTERFACES_cnoc = XsimMsgRequest XsimMsgIndication
-CPPFILES_cnoc   = $(TOOLDIR)/cpp/transportXsim.c
+CPPFILES_cnoc   = #$(TOOLDIR)/cpp/transportXsim.c
 BSVFILES_cnoc   = $(TOOLDIR)/bsv/XsimIF.bsv
 CPPFILES2_cnoc  = $(TOOLDIR)/cpp/transportXsim.c
 

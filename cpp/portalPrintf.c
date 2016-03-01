@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#ifndef __KERNEL__
 #ifdef  __cplusplus
 extern "C"
 #endif
@@ -33,4 +32,3 @@ int portal_printf(const char *format, ...)
     va_start(ap, format);
     return vfprintf(stderr, format, ap);
 }
-#endif

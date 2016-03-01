@@ -314,7 +314,7 @@ instance Connectable#(PhysMemMaster#(32, busWidth), PhysMemSlave#(40, busWidth))
 `ifdef BYTE_ENABLES
                                                      , firstbe: req.firstbe, lastbe: req.lastbe
 `endif
- });
+        });
       endrule
       mkConnection(m.write_client.writeData, s.write_server.writeData);
       mkConnection(s.write_server.writeDone, m.write_client.writeDone);

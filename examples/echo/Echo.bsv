@@ -39,8 +39,8 @@ interface Echo;
 endinterface
 
 typedef struct {
-	Bit#(16) a;
-	Bit#(16) b;
+        Bit#(16) a;
+        Bit#(16) b;
 } EchoPair deriving (Bits);
 
 module mkEcho#(EchoIndication indication)(Echo);
@@ -48,22 +48,24 @@ module mkEcho#(EchoIndication indication)(Echo);
     FIFO#(EchoPair) delay2 <- mkSizedFIFO(8);
 
     rule heard;
+        $display("[HW] heard %d", delay.first);
         delay.deq;
         indication.heard(delay.first);
     endrule
 
     rule heard2;
+        $display("[HW] heard2 a=%d, b=%d", delay2.first.a, delay2.first.b);
         delay2.deq;
         indication.heard2(delay2.first.b, delay2.first.a);
     endrule
    
    interface EchoRequest request;
       method Action say(Bit#(32) v);
-	 delay.enq(v);
+         delay.enq(v);
       endmethod
       
       method Action say2(Bit#(16) a, Bit#(16) b);
-	 delay2.enq(EchoPair { a: a, b: b});
+         delay2.enq(EchoPair { a: a, b: b});
       endmethod
       
       method Action setLeds(Bit#(8) v);

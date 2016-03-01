@@ -265,7 +265,7 @@ module mkMemReadInternal#(MemServerIndication ind,
                $display("mkMemReadInternal::req_ar: funny physAddr req.sglId=%d req.offset=%h physAddr=%h", req.sglId, req.offset, request.pa);
             serverProcessing.portB.request.put(BRAMRequest{write:True, responseOnWrite:False, address:truncate(request.rename_tag),
                                                    datain:DRec{req_tag:req.tag, req_burstLen: req.burstLen, client:request.client, rename_tag:request.rename_tag, last:(req.burstLen == fromInteger(valueOf(busWidthBytes)))}});
-            //$display("mkMemReadInternal::readReq: client=%d, rename_tag=%d, physAddr=%h req.burstLen=%d beat_shift=%d last=%d", request.client,request.rename_tag,request.pa, req.burstLen, beat_shift, req.burstLen == beat_shift);
+            $display("mkMemReadInternal::readReq: client=%d, rename_tag=%d, physAddr=%h req.burstLen=%d beat_shift=%d last=%d", request.client,request.rename_tag,request.pa, req.burstLen, beat_shift, req.burstLen == beat_shift);
             if (verbose) $display("mkMemReadInternal::read_client.readReq %d", cycle_cnt-last_readReq);
             last_readReq <= cycle_cnt;
             return PhysMemRequest{addr:request.pa, burstLen:req.burstLen, tag:request.rename_tag
@@ -286,14 +286,8 @@ module mkMemReadInternal#(MemServerIndication ind,
    interface Put tileControl;
       method Action put(TileControl tc);
          let tile = tc.tile;
-         let kv = True;
-         let sv = True;
-         if (tc.state == Running || tc.state == Stopped)
-            kv = False;
-         if (tc.state == Running)
-            sv = False;
-         killv[tile] <= kv;
-         stopv[tile] <= sv;
+         killv[tile] <= !(tc.state == Running || tc.state == Stopped);
+         stopv[tile] <= !(tc.state == Running);
       endmethod
    endinterface
    interface DmaDbg dbg;

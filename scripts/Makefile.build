@@ -71,7 +71,7 @@ BSCPATHFLAGS=  -bdir $(DTOP)/obj -vdir $(DTOP)/verilog -simdir $(DTOP)/obj -info
 BSCFLAGS_COMMON += $(BSCWARNFLAGS) $(BSCOPTFLAGS) $(BSCPATHFLAGS) --wait-for-license
 PROF_FLAGS= #-pg
 export SIM_CXXFLAGS= -I $(TOOLDIR)/cpp -I $(TOOLDIR) -D SIMULATION $(BSVDEFINES) -O $(PROF_FLAGS)
-SIM_CXX_COMMON = $(foreach f, BsimCtrl.cpp BsimDma.cpp sock_utils.c portalPrintf.c XsimTop.cpp poller.cpp transportSocket.c transportHardware.c transportXsim.c portal.c, $(TOOLDIR)/cpp/$f)
+SIM_CXX_COMMON = $(foreach f, BsimCtrl.cpp BsimDma.cpp sock_utils.c portalPrintf.c poller.cpp transportSocket.c transportHardware.c portal.c, $(TOOLDIR)/cpp/$f)
 SIM_CXX_LOCAL = $(SIM_CXX_COMMON) $(DTOP)/jni/XsimMsgRequest.c $(DTOP)/jni/XsimMsgIndication.c $(DTOP)/jni/GeneratedCppCallbacks.cpp
 
 ifneq ($(ALTERA),)

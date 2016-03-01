@@ -21,16 +21,7 @@
 
 #ifndef __PORTAL_OFFSETS_H__
 #define __PORTAL_OFFSETS_H__
-#ifdef __KERNEL__
-#include <linux/types.h>  // has same typedefs as stdint.h
-#include <linux/module.h>
-#include <linux/kernel.h>
-typedef struct task_struct *pthread_t;
-int pthread_create(pthread_t *thread, void *attr, void *(*start_routine) (void *), void *arg);
-#define PRIu64 "llx"
-#define PRIx64 "llx"
-#define PORTAL_PRINTF printk
-#else
+
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/socket.h> // for send()/recv()
@@ -51,7 +42,6 @@ extern const char *simulator_vcd_name;
 extern int noprogram;
 
 #define PORTAL_PRINTF portal_printf
-#endif
 
 // Other constants
 #define MAX_TIMERS    50
@@ -286,25 +276,16 @@ unsigned int read_pareff64(uint64_t pref, uint64_t offset);
 int setClockFrequency(int clkNum, long requestedFrequency, long *actualFrequency);
 void initPortalHardware(void);
 void addFdToPoller(struct PortalPoller *poller, int fd);
-#ifndef __KERNEL__
 int portal_printf(const char *format, ...); // outputs to stderr
-#endif
 
 extern int global_sockfd, global_pa_fd;
 extern PortalInternal *utility_portal;
 
 // Portal transport variants
 extern PortalTransportFunctions transportBsim, // Transport for bsim
-  transportHardware,    // Memory-mapped register transport for hardware
   transportSocketInit,  // Linux socket transport (Unix sockets and TCP); Initiator side
                    // (the 'connect()' call is on Initiator side; Responder does 'listen()'
-  transportSocketResp,  // Linux socket transport (Unix sockets and TCP); Responder side
-  transportShared,      // Shared memory transport
-  transportMux,         // Multiplex transport (to use 1 transport for all methods or multiple portals)
-  transportTrace,       // Trace transport tee
-  transportXsim,        // Xilinx xsim transport
-  transportWebSocketInit, // Websocket transport; Initiator side
-  transportWebSocketResp; // Websocket transport; Responder side
+  transportSocketResp;  // Linux socket transport (Unix sockets and TCP); Responder side
 #ifdef __cplusplus
 }
 #endif

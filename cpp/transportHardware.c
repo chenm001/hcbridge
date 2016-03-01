@@ -23,15 +23,9 @@
 // SOFTWARE.
 
 #include "portal.h"
-#ifdef __KERNEL__
-//#include "linux/delay.h"
-//#include "linux/file.h"
-//#include "linux/dma-buf.h"
-#else
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-#endif
 
 static int trace_hardware;//=1;
 void send_portal_null(struct PortalInternal *pint, volatile unsigned int *buffer, unsigned int hdr, int sendFd)
@@ -93,19 +87,15 @@ int busy_hardware(struct PortalInternal *pint, unsigned int v, const char *str)
     if (count <= 0) {
         if (0 && pint->busyType == BUSY_TIMEWAIT)
             while (!pint->item->notFull(pint, v)) {
-#ifndef __KERNEL__
                 struct timeval timeout;
                 timeout.tv_sec = 0;
                 timeout.tv_usec = 10000;
                 select(0, NULL, NULL, NULL, &timeout);
-#endif
             }
         else {
             PORTAL_PRINTF("putFailed: %s\n", str);
-#ifndef __KERNEL__
             if (pint->busyType == BUSY_EXIT)
                 exit(1);
-#endif
             return 1;
         }
     }
@@ -142,52 +132,3 @@ int event_hardware(struct PortalInternal *pint)
     }
     return -1;
 }
-
-static int init_hardware(struct PortalInternal *pint, void *param)
-{
-    initPortalHardware();
-#if defined(__KERNEL__)
-    int i;
-    pint->map_base = NULL;
-    for (i = 0; i < MAX_NUM_PORTALS; i++) {
-      if (tboard->portal[i].device_name == pint->fpga_number) {
-        pint->map_base = (volatile unsigned int*)(tboard->bar2io + i * PORTAL_BASE_OFFSET);
-        break;
-      }
-    }
-    if (!pint->map_base) {
-	PORTAL_PRINTF("init_hardware: portal not found %d.\n", pint->fpga_number);
-        return -1;
-    }
-#else
-    char buff[128];
-    snprintf(buff, sizeof(buff), "/dev/portal_%d_%d", pint->fpga_tile, pint->fpga_number);
-    pint->fpga_fd = open(buff, O_RDWR);
-    if (pint->fpga_fd < 0) {
-	PORTAL_PRINTF("Failed to open %s fd=%d errno=%d\n", buff, pint->fpga_fd, errno);
-	return -errno;
-    }
-    pint->map_base = (volatile unsigned int*)portalMmap(pint->fpga_fd, PORTAL_BASE_OFFSET);
-    if (pint->map_base == MAP_FAILED) {
-        PORTAL_PRINTF("Failed to mmap PortalHWRegs from fd=%d errno=%d\n", pint->fpga_fd, errno);
-        return -errno;
-    }  
-#endif
-    return 0;
-}
-static unsigned int read_hardware(PortalInternal *pint, volatile unsigned int **addr)
-{
-    return **addr;
-}
-static void write_hardware(PortalInternal *pint, volatile unsigned int **addr, unsigned int v)
-{
-    **addr = v;
-}
-static void write_fd_hardware(PortalInternal *pint, volatile unsigned int **addr, unsigned int v)
-{
-    **addr = v;
-}
-
-PortalTransportFunctions transportHardware = {
-    init_hardware, read_hardware, write_hardware, write_fd_hardware, mapchannel_hardware, mapchannel_req_generic,
-    send_portal_null, recv_portal_null, busy_hardware, enableint_hardware, event_hardware, notfull_hardware};
