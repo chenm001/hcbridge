@@ -105,9 +105,6 @@ module mkMemServer#(Vector#(numReadClients, MemReadClient#(busWidth)) readClient
          else 
             writer.request.memoryTraffic(rc);
       endmethod
-      method Action addrTrans(Bit#(32) pointer, Bit#(32) offset);
-         writer.request.addrTrans(pointer,offset);
-      endmethod
    endinterface
    interface masters = map(mkm,genVector);
 endmodule
@@ -122,7 +119,6 @@ module mkMemServerRead#(MemServerIndication indication,
             ,Add#(d__, TDiv#(busWidth, 8), ByteEnableSize)
             );
 
-   FIFO#(Bit#(32))   addrReqFifo <- mkFIFO;
    Reg#(Bit#(8)) dbgPtr <- mkReg(0);
    Reg#(Bit#(8)) trafficPtr <- mkReg(0);
    Reg#(Bit#(64)) trafficAccum <- mkReg(0);
@@ -144,12 +140,6 @@ module mkMemServerRead#(MemServerIndication indication,
       for(Integer j = 0; j < valueOf(nrc); j=j+1)
          read_servers[i*valueOf(nrc)+j] = readers[i].servers[j];
    end
-   
-   rule mmuEntry;
-      addrReqFifo.deq;
-      let physAddr <- mmus[addrReqFifo.first[31:16]].addr[0].response.get;
-      indication.addrResponse(zeroExtend(physAddr));
-   endrule
    
    Stmt dbgStmt = 
    seq
@@ -188,10 +178,6 @@ module mkMemServerRead#(MemServerIndication indication,
          if (rc == ChannelType_Read)
             trafficFSM.start;
       endmethod
-      method Action addrTrans(Bit#(32) pointer, Bit#(32) offset);
-         addrReqFifo.enq(pointer);
-         mmus[pointer[31:16]].addr[0].request.put(AddrTransRequest{id:truncate(pointer), off:extend(offset)});
-      endmethod
    endinterface
 endmodule
         
@@ -205,7 +191,6 @@ module mkMemServerWrite#(MemServerIndication indication,
             ,Add#(d__, TDiv#(busWidth, 8), ByteEnableSize)
             );
    
-   FIFO#(Bit#(32))   addrReqFifo <- mkFIFO;
    Reg#(Bit#(8)) dbgPtr <- mkReg(0);
    Reg#(Bit#(8)) trafficPtr <- mkReg(0);
    Reg#(Bit#(64)) trafficAccum <- mkReg(0);
@@ -228,12 +213,6 @@ module mkMemServerWrite#(MemServerIndication indication,
          write_servers[i*valueOf(nwc)+j] = writers[i].servers[j];
    end
    
-   rule mmuEntry;
-      addrReqFifo.deq;
-      let physAddr <- mmus[addrReqFifo.first[31:16]].addr[1].response.get;
-      indication.addrResponse(zeroExtend(physAddr));
-   endrule
-
    Stmt dbgStmt = 
    seq
       for(dbgPtr <= 0; dbgPtr < fromInteger(valueOf(numClients)); dbgPtr <= dbgPtr+1)
@@ -270,10 +249,6 @@ module mkMemServerWrite#(MemServerIndication indication,
       method Action memoryTraffic(ChannelType rc);
          if (rc == ChannelType_Write) 
             trafficFSM.start;
-      endmethod
-      method Action addrTrans(Bit#(32) pointer, Bit#(32) offset);
-         addrReqFifo.enq(pointer);
-         mmus[pointer[31:16]].addr[1].request.put(AddrTransRequest{id:truncate(pointer), off:extend(offset)});
       endmethod
    endinterface
 endmodule

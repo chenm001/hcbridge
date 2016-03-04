@@ -104,10 +104,6 @@ typedef struct {
 // @brief Control interface to Dma engine
 //
 interface MemServerRequest;
-   // @brief Requests an address translation
-   //
-   method Action addrTrans(Bit#(32) sglId, Bit#(32) offset);
-
    // @brief Changes tile status
    //
    method Action setTileState(TileControl tc);
