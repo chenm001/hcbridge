@@ -157,29 +157,3 @@ endinterface
 `ifdef PcieHostInterface
 typedef PcieHostTop HostInterface;
 `endif
-
-////////////////////////////// Zynq /////////////////////////////////
-`ifdef ZynqHostInterface
-import PS7LIB::*;
-import Bscan::*;
-
-interface HostInterface;
-    interface PS7 ps7;
-    interface Clock portalClock;
-    interface Reset portalReset;
-    interface Clock derivedClock;
-    interface Reset derivedReset;
-    interface BscanTop bscan;
-`ifdef XILINX_SYS_CLK
-   interface Clock tsys_clk_200mhz;
-   interface Clock tsys_clk_200mhz_buf;
-`endif
-endinterface
-
-//export PS7LIB::*;
-//export BscanTop;
-//export HostInterface;
-//export DataBusWidth;
-//export NumberOfMasters;
-//export PhysAddrWidth;
-`endif
