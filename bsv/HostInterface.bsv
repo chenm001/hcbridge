@@ -82,9 +82,9 @@ import GetPut            :: *;
 import ClientServer      :: *;
 import BRAM              :: *;
 import PCIE              :: *;
-import Bscan             :: *;
-import PcieCsr           :: *;
-import PcieTracer        :: *;
+//import Bscan             :: *;
+//import PcieCsr           :: *;
+//import PcieTracer        :: *;
 import MemTypes          :: *;
 import Pipe              :: *;
 `ifndef SIMULATION
