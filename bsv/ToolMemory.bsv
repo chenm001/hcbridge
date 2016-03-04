@@ -60,7 +60,7 @@ interface MemServerIndication;
    method Action addrResponse(Bit#(64) physAddr);
    method Action reportStateDbg(DmaDbgRec rec);
    method Action reportMemoryTraffic(Bit#(64) words);
-   method Action error(Bit#(32) code, Bit#(32) sglId, Bit#(64) offset, Bit#(64) extra);
+   method Action error(Bit#(32) code, Bit#(64) offset, Bit#(64) extra);
 endinterface
 
 //

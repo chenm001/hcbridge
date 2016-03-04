@@ -283,6 +283,37 @@ instance Connectable#(MemWriteClient#(dsz), MemWriteServer#(dsz));
    endmodule
 endinstance
 
+instance Connectable#(PhysMemReadClient#(asz,dsz), PhysMemReadServer#(asz,dsz));
+   module mkConnection#(PhysMemReadClient#(asz,dsz) source, PhysMemReadServer#(asz,dsz) sink)(Empty);
+      rule mr_request;
+         let req <- source.readReq.get();
+         sink.readReq.put(req);
+      endrule
+      rule mr_response;
+         let resp <- sink.readData.get();
+         source.readData.put(resp);
+      endrule
+   endmodule
+endinstance
+
+instance Connectable#(PhysMemWriteClient#(asz,dsz), PhysMemWriteServer#(asz,dsz));
+   module mkConnection#(PhysMemWriteClient#(asz,dsz) source, PhysMemWriteServer#(asz,dsz) sink)(Empty);
+      rule mw_request;
+         let req <- source.writeReq.get();
+         sink.writeReq.put(req);
+      endrule
+      rule mw_response;
+         let resp <- source.writeData.get();
+         sink.writeData.put(resp);
+      endrule
+      rule mw_done;
+         let resp <- sink.writeDone.get();
+         source.writeDone.put(resp);
+      endrule
+   endmodule
+endinstance
+
+
 instance Connectable#(PhysMemMaster#(addrWidth, busWidth), PhysMemSlave#(addrWidth, busWidth));
    module mkConnection#(PhysMemMaster#(addrWidth, busWidth) m, PhysMemSlave#(addrWidth, busWidth) s)(Empty);
       mkConnection(m.read_client.readReq, s.read_server.readReq);

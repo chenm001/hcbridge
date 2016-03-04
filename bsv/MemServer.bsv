@@ -48,13 +48,13 @@ endinterface
 interface MemServerRead#(numeric type addrWidth, numeric type busWidth, numeric type numClients, numeric type numServers);
    interface MemServerRequest request;
    interface Vector#(numClients, PhysMemReadClient#(addrWidth,busWidth)) clients;
-   interface Vector#(numServers, MemReadServer#(busWidth)) servers;
+   interface Vector#(numServers, PhysMemReadServer#(addrWidth,busWidth)) servers;
 endinterface
 
 interface MemServerWrite#(numeric type addrWidth, numeric type busWidth, numeric type numClients, numeric type numServers);
    interface MemServerRequest request;
    interface Vector#(numClients, PhysMemWriteClient#(addrWidth,busWidth)) clients;
-   interface Vector#(numServers, MemWriteServer#(busWidth)) servers;
+   interface Vector#(numServers, PhysMemWriteServer#(addrWidth,busWidth)) servers;
 endinterface
    
 typedef struct {
@@ -62,8 +62,8 @@ typedef struct {
    Bit#(32) pref;
    } DmaError deriving (Bits);
 
-module mkMemServer#(Vector#(numReadClients, MemReadClient#(busWidth)) readClients,
-                    Vector#(numWriteClients, MemWriteClient#(busWidth)) writeClients,
+module mkMemServer#(Vector#(numReadClients, PhysMemReadClient#(addrWidth,busWidth)) readClients,
+                    Vector#(numWriteClients, PhysMemWriteClient#(addrWidth,busWidth)) writeClients,
                     Vector#(numMMUs,MMU#(addrWidth)) mmus,
                     MemServerIndication indication)  
    (MemServer#(addrWidth, busWidth, nMasters))
@@ -127,15 +127,15 @@ module mkMemServerRead#(MemServerIndication indication,
       return mmus[i].addr[0];
    endfunction
    Vector#(numMMUs,ArbitratedMMU#(addrWidth,numClients)) mmu_servers <- mapM(mkArbitratedMMU,map(selectMMUPort,genVector));
-   Vector#(numClients,MemReadInternal#(addrWidth,busWidth,MemServerTags,nrc)) readers;
+   Vector#(numClients,PhysMemReadInternal#(addrWidth,busWidth,MemServerTags,nrc)) readers;
    Vector#(numClients, PhysMemReadClient#(addrWidth,busWidth)) read_clients;
-   Vector#(numServers, MemReadServer#(busWidth)) read_servers;
+   Vector#(numServers, PhysMemReadServer#(addrWidth,busWidth)) read_servers;
 
    for(Integer i = 0; i < valueOf(numClients); i = i+1) begin
       Vector#(numMMUs,Server#(AddrTransRequest,Bit#(addrWidth))) ss;
       for(Integer j = 0; j < valueOf(numMMUs); j=j+1)
          ss[j] = mmu_servers[j].servers[i];
-      readers[i] <- mkMemReadInternal(indication,ss);
+      readers[i] <- mkPhysMemReadInternal(indication,ss);
       read_clients[i] = readers[i].client;
       for(Integer j = 0; j < valueOf(nrc); j=j+1)
          read_servers[i*valueOf(nrc)+j] = readers[i].servers[j];
@@ -201,7 +201,7 @@ module mkMemServerWrite#(MemServerIndication indication,
    Vector#(numMMUs,ArbitratedMMU#(addrWidth,numClients)) mmu_servers <- mapM(mkArbitratedMMU,map(selectMMUPort,genVector));
    Vector#(numClients,MemWriteInternal#(addrWidth,busWidth,MemServerTags,nwc)) writers;
    Vector#(numClients, PhysMemWriteClient#(addrWidth,busWidth)) write_clients;
-   Vector#(numServers, MemWriteServer#(busWidth)) write_servers;
+   Vector#(numServers, PhysMemWriteServer#(addrWidth,busWidth)) write_servers;
 
    for(Integer i = 0; i < valueOf(numClients); i = i+1) begin
       Vector#(numMMUs,Server#(AddrTransRequest,Bit#(addrWidth))) ss;

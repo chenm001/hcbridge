@@ -83,7 +83,7 @@ typedef MemPortal#(12,32) StdPortal;
 interface ConnectalTop;
    interface PhysMemSlave#(18,32) slave;
    interface Vector#(MaxNumberOfPortals,ReadOnly#(Bool)) interrupt;
-   interface Vector#(NumReadClients,MemReadClient#(DataBusWidth)) readers;
-   interface Vector#(NumWriteClients,MemWriteClient#(DataBusWidth)) writers;
+   interface Vector#(NumReadClients,PhysMemReadClient#(PhysAddrWidth,DataBusWidth)) readers;
+   interface Vector#(NumWriteClients,PhysMemWriteClient#(PhysAddrWidth,DataBusWidth)) writers;
    interface `PinType pins;
 endinterface

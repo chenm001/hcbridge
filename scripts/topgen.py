@@ -86,8 +86,8 @@ module mkConnectalTop
    Vector#(%(portalCount)s,StdPortal) portals;
 %(portalList)s
    let ctrl_mux <- mkSlaveMux(portals);
-   Vector#(NumWriteClients,MemWriteClient#(DataBusWidth)) nullWriters = replicate(null_mem_write_client());
-   Vector#(NumReadClients,MemReadClient#(DataBusWidth)) nullReaders = replicate(null_mem_read_client());
+   Vector#(NumWriteClients,PhysMemWriteClient#(PhysAddrWidth,DataBusWidth)) nullWriters = replicate(null_phys_mem_write_client());
+   Vector#(NumReadClients,PhysMemReadClient#(PhysAddrWidth,DataBusWidth)) nullReaders = replicate(null_phys_mem_read_client());
    interface interrupt = getInterruptVector(portals);
    interface slave = ctrl_mux;
    interface readers = take(%(portalReaders)s);

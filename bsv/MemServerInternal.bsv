@@ -53,14 +53,14 @@ interface MemWriteInternal#(numeric type addrWidth, numeric type busWidth, numer
    interface DmaDbg dbg;
    interface Put#(TileControl) tileControl;
    interface PhysMemWriteClient#(addrWidth,busWidth) client;
-   interface Vector#(numServers, MemWriteServer#(busWidth)) servers;
+   interface Vector#(numServers, PhysMemWriteServer#(addrWidth,busWidth)) servers;
 endinterface
 
-interface MemReadInternal#(numeric type addrWidth, numeric type busWidth, numeric type numTags, numeric type numServers);
+interface PhysMemReadInternal#(numeric type addrWidth, numeric type busWidth, numeric type numTags, numeric type numServers);
    interface DmaDbg dbg;
    interface Put#(TileControl) tileControl;
    interface PhysMemReadClient#(addrWidth,busWidth) client;
-   interface Vector#(numServers, MemReadServer#(busWidth)) servers;
+   interface Vector#(numServers, PhysMemReadServer#(addrWidth,busWidth)) servers;
 endinterface
 
 function Bool sglid_outofrange(SGLId p);
@@ -69,13 +69,13 @@ endfunction
 
 import RegFile::*;
 
-typedef struct {MemRequest req;
-                Bit#(TLog#(TMax#(1,numClients))) client; } LRec#(numeric type numClients, numeric type addrWidth) deriving(Bits);
+typedef struct {PhysMemRequest#(addrWidth,dataWidth) req;
+                Bit#(TLog#(TMax#(1,numClients))) client; } LRec#(numeric type numClients, numeric type addrWidth, numeric type dataWidth) deriving(Bits);
 
-typedef struct {MemRequest req;
+typedef struct {PhysMemRequest#(addrWidth,dataWidth) req;
                 Bit#(addrWidth) pa;
                 Bit#(MemTagSize) rename_tag;
-                Bit#(TLog#(TMax#(1,numClients))) client; } RRec#(numeric type numClients, numeric type addrWidth) deriving(Bits);
+                Bit#(TLog#(TMax#(1,numClients))) client; } RRec#(numeric type numClients, numeric type addrWidth, numeric type dataWidth) deriving(Bits);
 
 typedef struct {Bit#(MemTagSize) req_tag;
                 Bit#(BurstLenSize) req_burstLen;
@@ -90,9 +90,9 @@ typedef struct {Bit#(MemTagSize) orig_tag;
 typedef struct {DmaErrorType errorType;
                 Bit#(32) pref; } DmaError deriving (Bits);
 
-module mkMemReadInternal#(MemServerIndication ind,
+module mkPhysMemReadInternal#(MemServerIndication ind,
                           Vector#(numMMUs,Server#(AddrTransRequest,Bit#(addrWidth))) mmus) 
-   (MemReadInternal#(addrWidth, busWidth, numTags, numServers))
+   (PhysMemReadInternal#(addrWidth, busWidth, numTags, numServers))
    provisos(Log#(busWidthBytes,beatShift)
             ,Div#(busWidth,8,busWidthBytes)
             ,Add#(beatShift, a__, 8)
@@ -105,10 +105,10 @@ module mkMemReadInternal#(MemServerIndication ind,
    Vector#(4,Reg#(Bool)) killv <- replicateM(mkReg(False));
    Vector#(4,Reg#(Bool)) stopv <- replicateM(mkReg(False));
    
-   // stage 0: address translation (latency = MMU_PIPELINE_DEPTH)
-   FIFO#(LRec#(numServers,addrWidth)) clientRequest <- mkSizedFIFO(valueOf(MMU_PIPELINE_DEPTH));
+   // stage 0: address translation (latency = 1)
+   FIFO#(LRec#(numServers,addrWidth,busWidth)) clientRequest <- mkFIFO;
    // stage 1: address validation (latency = 1)
-   FIFO#(RRec#(numServers,addrWidth))  serverRequest <- mkFIFO;
+   FIFO#(RRec#(numServers,addrWidth,busWidth)) serverRequest <- mkFIFO;
    // stage 2: read commands
    BRAM_Configure bramConfig = defaultValue;
    if (mainClockPeriod < 8)
@@ -150,12 +150,12 @@ module mkMemReadInternal#(MemServerIndication ind,
    FIFO#(DmaError) dmaErrorFifo <- mkFIFO();
    rule dmaError;
       let error <- toGet(dmaErrorFifo).get();
-      ind.error(extend(pack(error.errorType)), error.pref, 0, 0);
+      ind.error(extend(pack(error.errorType)), 0, 0);
    endrule
          
    rule checkMmuResp;
       let request <- toGet(clientRequest).get();
-      let physAddr <- mmus[request.req.sglId[31:16]].response.get;
+      let physAddr = request.req.addr;
       let rename_tag <- tag_gen.getTag;
       let burstLenBeats = request.req.burstLen >> beat_shift;
       clientBurstLen.upd(truncate(rename_tag), tuple2(burstLenBeats == 1, burstLenBeats));
@@ -225,23 +225,17 @@ module mkMemReadInternal#(MemServerIndication ind,
       if(verbose) $display("mkMemReadInternal::complete_burst1b count %h", compCountReg);
    endrule
    
-   Vector#(numServers, MemReadServer#(busWidth)) sv = newVector;
+   Vector#(numServers, PhysMemReadServer#(addrWidth,busWidth)) sv = newVector;
    for(Integer i = 0; i < valueOf(numServers); i=i+1) 
-      sv[i] = (interface MemReadServer;
+      sv[i] = (interface PhysMemReadServer;
                   interface Put readReq;
-                     method Action put(MemRequest req);
+                     method Action put(PhysMemRequest#(addrWidth,busWidth) req);
                         last_loadClient <= cycle_cnt;
-                        let mmusel = req.sglId[31:16];
-                              if (verbose) $display("mkMemReadInternal::loadClient server %d mmusel %d burstLen %d tag %d cycle %d",
-                           i, mmusel, req.burstLen >> beat_shift, req.tag, cycle_cnt-last_loadClient);
-                        if (mmusel >= fromInteger(valueOf(numMMUs)))
-                           dmaErrorFifo.enq(DmaError { errorType: DmaErrorMMUOutOfRange_r, pref: req.sglId });
-                           else if (sglid_outofrange(req.sglId))
-                           dmaErrorFifo.enq(DmaError { errorType: DmaErrorSGLIdOutOfRange_r, pref: req.sglId });
-                           else if (stopv[req.tag[5:4]] == False) begin
-                              clientRequest.enq(LRec{req:req, client:fromInteger(i)});
-                              mmus[mmusel].request.put(AddrTransRequest{id:truncate(req.sglId),off:req.offset});
-                           end
+                        if (verbose) $display("mkMemReadInternal::loadClient server %d burstLen %d tag %d cycle %d",
+                                              i, req.burstLen >> beat_shift, req.tag, cycle_cnt-last_loadClient);
+                        if (stopv[req.tag[5:4]] == False) begin
+                           clientRequest.enq(LRec{req:req, client:fromInteger(i)});
+                        end
                      endmethod
                   endinterface
                   interface Get readData;
@@ -262,7 +256,7 @@ module mkMemReadInternal#(MemServerIndication ind,
             let request <- toGet(serverRequest).get;
             let req = request.req;
             if (False && request.pa[31:24] != 0)
-               $display("mkMemReadInternal::req_ar: funny physAddr req.sglId=%d req.offset=%h physAddr=%h", req.sglId, req.offset, request.pa);
+               $display("mkMemReadInternal::req_ar: funny physAddr physAddr=%h", request.pa);
             serverProcessing.portB.request.put(BRAMRequest{write:True, responseOnWrite:False, address:truncate(request.rename_tag),
                                                    datain:DRec{req_tag:req.tag, req_burstLen: req.burstLen, client:request.client, rename_tag:request.rename_tag, last:(req.burstLen == fromInteger(valueOf(busWidthBytes)))}});
             $display("mkMemReadInternal::readReq: client=%d, rename_tag=%d, physAddr=%h req.burstLen=%d beat_shift=%d last=%d", request.client,request.rename_tag,request.pa, req.burstLen, beat_shift, req.burstLen == beat_shift);
@@ -317,10 +311,10 @@ module mkMemWriteInternal#(MemServerIndication ind,
    Vector#(4,Reg#(Bool)) killv <- replicateM(mkReg(False));
    Vector#(4,Reg#(Bool)) stopv <- replicateM(mkReg(False));
 
-   // stage 0: address translation (latency = MMU_PIPELINE_DEPTH)
-   FIFO#(LRec#(numServers,addrWidth)) clientRequest <- mkSizedFIFO(valueOf(MMU_PIPELINE_DEPTH));
+   // stage 0: address translation (latency = 1)
+   FIFO#(LRec#(numServers,addrWidth,busWidth)) clientRequest <- mkFIFO;
    // stage 1: address validation (latency = 1)
-   FIFO#(RRec#(numServers,addrWidth))  serverRequest <- mkFIFO;
+   FIFO#(RRec#(numServers,addrWidth,busWidth)) serverRequest <- mkFIFO;
    // stage 2: write commands
    FIFO#(DRec#(numServers, addrWidth)) serverProcessing <- mkSizedFIFO(valueOf(numTags));
    // stage 3: write data 
@@ -346,14 +340,14 @@ module mkMemWriteInternal#(MemServerIndication ind,
    FIFO#(DmaError) dmaErrorFifo <- mkFIFO();
    rule dmaError;
       let error <- toGet(dmaErrorFifo).get();
-      ind.error(extend(pack(error.errorType)), error.pref, 0, 0);
+      ind.error(extend(pack(error.errorType)), 0, 0);
    endrule
 
    rule checkMmuResp;
       let request <- toGet(clientRequest).get;
       let req = request.req;
       let client = request.client;
-      let physAddr <- mmus[req.sglId[31:16]].response.get;
+      let physAddr = req.addr;
       let rename_tag <- tag_gen.getTag;
       serverRequest.enq(RRec{req:req, pa:physAddr, client:client, rename_tag:extend(rename_tag)});
       //if (verbose) $display("mkMemWriteInternal::checkMmuResp: client=%d, rename_tag=%d", client,rename_tag);
@@ -404,22 +398,16 @@ module mkMemWriteInternal#(MemServerIndication ind,
       clientResponse.enq(rv);
    endrule
    
-   Vector#(numServers, MemWriteServer#(busWidth)) sv = newVector;
+   Vector#(numServers, PhysMemWriteServer#(addrWidth,busWidth)) sv = newVector;
    for(Integer i = 0; i < valueOf(numServers); i=i+1) 
-      sv[i] = (interface MemWriteServer;
+      sv[i] = (interface PhysMemWriteServer;
                   interface Put writeReq;
-                     method Action put(MemRequest req);
-                              if (verbose) $display("mkMemWriteInternal::loadClient %d %d", i, cycle_cnt-last_loadClient);
+                     method Action put(PhysMemRequest#(addrWidth,busWidth) req);
+                        if (verbose) $display("mkMemWriteInternal::loadClient %d %d", i, cycle_cnt-last_loadClient);
                         last_loadClient <= cycle_cnt;
-                        let mmusel = req.sglId[31:16];
-                        if (mmusel >= fromInteger(valueOf(numMMUs)))
-                           dmaErrorFifo.enq(DmaError { errorType: DmaErrorMMUOutOfRange_w, pref: req.sglId });
-                           else if (sglid_outofrange(req.sglId))
-                           dmaErrorFifo.enq(DmaError { errorType: DmaErrorSGLIdOutOfRange_w, pref: req.sglId });
-                           else if (stopv[req.tag[5:4]] == False) begin
-                              clientRequest.enq(LRec{req:req, client:fromInteger(i)});
-                              mmus[mmusel].request.put(AddrTransRequest{id:truncate(req.sglId),off:req.offset});
-                           end
+                        if (stopv[req.tag[5:4]] == False) begin
+                           clientRequest.enq(LRec{req:req, client:fromInteger(i)});
+                        end
                      endmethod
                   endinterface
                   interface Put writeData = toPut(clientWriteData[i]);

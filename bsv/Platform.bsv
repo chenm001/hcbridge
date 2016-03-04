@@ -53,15 +53,15 @@ typedef TMax#(TLog#(TSub#(NumberOfTiles,1)),1) TileTagBits;
 function Bit#(TSub#(MemTagSize,TileTagBits)) tagLsb(Bit#(MemTagSize) tag); return truncate(tag); endfunction
 function Bit#(TileTagBits) tagMsb(Bit#(MemTagSize) tag); return truncate(tag >> valueOf(TSub#(MemTagSize,TileTagBits))); endfunction
 
-module renameReads#(Integer tile, MemReadClient#(DataBusWidth) reader, MemServerIndication err)(MemReadClient#(DataBusWidth));
+module renameReads#(Integer tile, PhysMemReadClient#(PhysAddrWidth,DataBusWidth) reader, MemServerIndication err)(PhysMemReadClient#(PhysAddrWidth,DataBusWidth));
    interface Get readReq;
-      method ActionValue#(MemRequest) get;
+      method ActionValue#(PhysMemRequest#(PhysAddrWidth,DataBusWidth)) get;
          let req <- reader.readReq.get;
          Bit#(TSub#(MemTagSize,TileTagBits)) lsb = tagLsb(req.tag);
          Bit#(TileTagBits) msb = tagMsb(req.tag);
          if(req.tag != extend(lsb) && valueOf(NumberOfTiles) > 2) begin // one mgmt tile and one user tile
             $display("renameReads tile tag out of range: 'h%h", req.tag);
-            err.error(extend(pack(DmaErrorTileTagOutOfRange)), req.sglId, extend(req.tag), fromInteger(tile));
+            err.error(extend(pack(DmaErrorTileTagOutOfRange)), extend(req.tag), fromInteger(tile));
          end
          req.tag = {fromInteger(tile),lsb};
          return req;
@@ -74,15 +74,15 @@ module renameReads#(Integer tile, MemReadClient#(DataBusWidth) reader, MemServer
    endinterface
 endmodule
 
-module renameWrites#(Integer tile, MemWriteClient#(DataBusWidth) writer, MemServerIndication err)(MemWriteClient#(DataBusWidth));
+module renameWrites#(Integer tile, PhysMemWriteClient#(PhysAddrWidth,DataBusWidth) writer, MemServerIndication err)(PhysMemWriteClient#(PhysAddrWidth,DataBusWidth));
    interface Get writeReq;
-      method ActionValue#(MemRequest) get;
+      method ActionValue#(PhysMemRequest#(PhysAddrWidth,DataBusWidth)) get;
          let req <- writer.writeReq.get;
          Bit#(TSub#(MemTagSize,TileTagBits)) lsb = tagLsb(req.tag);
          Bit#(TileTagBits) msb = tagMsb(req.tag);
          if(req.tag != extend(lsb) && valueOf(NumberOfTiles) > 2) begin // one mgmt tile and one user tile
             $display("renameWrites tile tag out of range: 'h%h", req.tag);
-            err.error(extend(pack(DmaErrorTileTagOutOfRange)), req.sglId, extend(req.tag), fromInteger(tile));
+            err.error(extend(pack(DmaErrorTileTagOutOfRange)), extend(req.tag), fromInteger(tile));
          end
          req.tag = {fromInteger(tile),lsb};
          return req;
@@ -107,8 +107,8 @@ module mkPlatform#(Vector#(NumberOfUserTiles, ConnectalTop) tiles)(Platform);
 
    Vector#(NumberOfUserTiles, PhysMemSlave#(18,32)) tile_slaves;
    Vector#(NumberOfUserTiles, ReadOnly#(Bool)) tile_interrupts;
-   Vector#(NumberOfUserTiles, Vector#(NumReadClients, MemReadClient#(DataBusWidth))) tile_read_clients;
-   Vector#(NumberOfUserTiles, Vector#(NumWriteClients, MemWriteClient#(DataBusWidth))) tile_write_clients;
+   Vector#(NumberOfUserTiles, Vector#(NumReadClients, PhysMemReadClient#(PhysAddrWidth,DataBusWidth))) tile_read_clients;
+   Vector#(NumberOfUserTiles, Vector#(NumWriteClients, PhysMemWriteClient#(PhysAddrWidth,DataBusWidth))) tile_write_clients;
    Vector#(NumberOfUserTiles, Vector#(NumReadClients, Integer)) read_client_tile_numbers;
    Vector#(NumberOfUserTiles, Vector#(NumWriteClients, Integer)) write_client_tile_numbers;
    for(Integer i = 0; i < valueOf(NumberOfUserTiles); i=i+1) begin
@@ -129,8 +129,8 @@ module mkPlatform#(Vector#(NumberOfUserTiles, ConnectalTop) tiles)(Platform);
    MemServerIndicationProxy lMemServerIndicationProxy <- mkMemServerIndicationProxy(PlatformIfcNames_MemServerIndicationH2S);
 
    MMU#(PhysAddrWidth) lMMU <- mkMMU(0,True, lMMUIndicationProxy.ifc);
-   Vector#(TMul#(NumberOfUserTiles,NumReadClients), MemReadClient#(DataBusWidth)) tile_read_clients_renamed <- zipWith3M(renameReads, concat(read_client_tile_numbers), concat(tile_read_clients), replicate(lMemServerIndicationProxy.ifc));
-   Vector#(TMul#(NumberOfUserTiles,NumWriteClients), MemWriteClient#(DataBusWidth)) tile_write_clients_renamed <- zipWith3M(renameWrites, concat(write_client_tile_numbers), concat(tile_write_clients), replicate(lMemServerIndicationProxy.ifc));
+   Vector#(TMul#(NumberOfUserTiles,NumReadClients), PhysMemReadClient#(PhysAddrWidth,DataBusWidth)) tile_read_clients_renamed <- zipWith3M(renameReads, concat(read_client_tile_numbers), concat(tile_read_clients), replicate(lMemServerIndicationProxy.ifc));
+   Vector#(TMul#(NumberOfUserTiles,NumWriteClients), PhysMemWriteClient#(PhysAddrWidth,DataBusWidth)) tile_write_clients_renamed <- zipWith3M(renameWrites, concat(write_client_tile_numbers), concat(tile_write_clients), replicate(lMemServerIndicationProxy.ifc));
    MemServer#(PhysAddrWidth,DataBusWidth,NumberOfMasters) lMemServer <- mkMemServer(tile_read_clients_renamed, tile_write_clients_renamed, vec(lMMU), lMemServerIndicationProxy.ifc);
 
    MMURequestWrapper lMMURequestWrapper <- mkMMURequestWrapper(PlatformIfcNames_MMURequestS2H, lMMU.request);
