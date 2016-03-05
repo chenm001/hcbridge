@@ -195,18 +195,19 @@ typedef uint32_t fixed32; /* for GeneratedTypes.h from protobuf */
 #define TILE_BASE_OFFSET     (PORTAL_BASE_OFFSET << ADDRESS_PORTAL_SELECTOR)
 
 /* Offsets of mapped registers within an /dev/fpgaxxx device */
-#define PORTAL_FIFO(A)   ( (((A)+1) << ADDRESS_METHOD_SIZE) / sizeof(uint32_t) )
+#define PORTAL_FIFO(A)   ( ((A) << ADDRESS_METHOD_SIZE) / sizeof(uint32_t) )
 
 // PortalCtrl offsets
-#define PORTAL_CTRL_INTERRUPT_STATUS 0
-#define PORTAL_CTRL_INTERRUPT_ENABLE 1
-#define PORTAL_CTRL_NUM_TILES        2
-#define PORTAL_CTRL_IND_QUEUE_STATUS 3
-#define PORTAL_CTRL_PORTAL_ID        4
-#define PORTAL_CTRL_NUM_PORTALS      5
-#define PORTAL_CTRL_COUNTER_MSB      6
-#define PORTAL_CTRL_COUNTER_LSB      7
-#define PORTAL_CTRL_SIZE            (8 * sizeof(uint32_t))
+#define PORTAL_CTRL_OFFSET              ( (((1 << ADDRESS_METHOD_SELECTOR) - 1) << ADDRESS_METHOD_SIZE) / sizeof(uint32_t) )
+#define PORTAL_CTRL_INTERRUPT_STATUS    (PORTAL_CTRL_OFFSET + 0)
+#define PORTAL_CTRL_INTERRUPT_ENABLE    (PORTAL_CTRL_OFFSET + 1)
+#define PORTAL_CTRL_NUM_TILES           (PORTAL_CTRL_OFFSET + 2)
+#define PORTAL_CTRL_IND_QUEUE_STATUS    (PORTAL_CTRL_OFFSET + 3)
+#define PORTAL_CTRL_PORTAL_ID           (PORTAL_CTRL_OFFSET + 4)
+#define PORTAL_CTRL_NUM_PORTALS         (PORTAL_CTRL_OFFSET + 5)
+#define PORTAL_CTRL_COUNTER_MSB         (PORTAL_CTRL_OFFSET + 6)
+#define PORTAL_CTRL_COUNTER_LSB         (PORTAL_CTRL_OFFSET + 7)
+#define PORTAL_CTRL_SIZE                (8 * sizeof(uint32_t))
 
 /*
  * Constants used in shared memory transport for portals

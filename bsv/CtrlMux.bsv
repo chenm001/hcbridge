@@ -98,34 +98,34 @@ module mkPortalCtrlMemSlave#(Bit#(dataWidth) ifcId, PortalInterrupt#(dataWidth) 
    interface PortalCtrl memSlave;
    method Action write(Bit#(addrWidth) addr, Bit#(dataWidth) v);
       if (addr == 4)
-         interruptEnableReg <= v[0] == 1'd1;
+         interruptEnableReg <= (v[0] == 1'd1);
    endmethod
 
    method ActionValue#(Bit#(dataWidth)) read(Bit#(addrWidth) addr);
-               let v = 'h05a05a0;
-               if (addr == 0)
-                  v = intr.status() ? 1 : 0;
-               if (addr == 4)
-                  v = interruptEnableReg ? 1 : 0;
-               if (addr == 8)
-                  v = fromInteger(valueOf(NumberOfTiles));
-               if (addr == 'h00C) begin
-                  if (intr.status())
-                     v = intr.channel()+1;
-                  else 
-                     v = 0;
-               end
-               if (addr == 'h010)
-                  v = ifcId;
-               if (addr == 'h014)
-                  v = num_portals_reg;
-               if (addr == 'h018) begin
-                  snapshot <= truncate(cycle_count);
-                  v = truncate(cycle_count>>valueOf(dataWidth));
-               end
-               if (addr == 'h01C)
-                  v = snapshot;
-               return v;
+      let v = 'h05a05a0;
+      if (addr == 0)
+         v = intr.status() ? 1 : 0;
+      if (addr == 4)
+         v = interruptEnableReg ? 1 : 0;
+      if (addr == 8)
+         v = fromInteger(valueOf(NumberOfTiles));
+      if (addr == 'h00C) begin
+         if (intr.status())
+            v = intr.channel()+1;
+         else 
+            v = 0;
+      end
+      if (addr == 'h010)
+         v = ifcId;
+      if (addr == 'h014)
+         v = num_portals_reg;
+      if (addr == 'h018) begin
+         snapshot <= truncate(cycle_count);
+         v = truncate(cycle_count>>valueOf(dataWidth));
+      end
+      if (addr == 'h01C)
+         v = snapshot;
+      return v;
    endmethod
    endinterface
    interface ReadOnly interrupt;
@@ -153,11 +153,11 @@ module mkMemMethodMuxIn#(PortalCtrl#(aw,dataWidth) ctrl, Vector#(numRequests, Pi
    let port_sel_high = valueOf(TSub#(addrWidth,1));
    function Bit#(selWidth) psel(Bit#(addrWidth) a);
       Bit#(selWidth) v = a[port_sel_high:port_sel_low];
-      return v - 1;
+      return v;
    endfunction
    function Bool pselCtrl(Bit#(addrWidth) a);
       Bit#(selWidth) v = a[port_sel_high:port_sel_low];
-      return v == 0;
+      return v == ~0;
    endfunction
    function Bit#(aw) asel(Bit#(addrWidth) a);
       return a[(port_sel_low-1):0];
@@ -285,11 +285,11 @@ module mkMemMethodMuxOut#(PortalCtrl#(aw,dataWidth) ctrl, Vector#(numIndications
    let port_sel_high = valueOf(TSub#(addrWidth,1));
    function Bit#(selWidth) psel(Bit#(addrWidth) a);
       Bit#(selWidth) v = a[port_sel_high:port_sel_low];
-      return v - 1;
+      return v;
    endfunction
    function Bool pselCtrl(Bit#(addrWidth) a);
       Bit#(selWidth) v = a[port_sel_high:port_sel_low];
-      return v == 0;
+      return v == ~0;
    endfunction
    function Bit#(aw) asel(Bit#(addrWidth) a);
       return a[(port_sel_low-1):0];
@@ -360,9 +360,9 @@ module mkMemMethodMuxOut#(PortalCtrl#(aw,dataWidth) ctrl, Vector#(numIndications
             let b <- fifoWriteAddrGenerator.addrBeat.get();
             if (wsCtrl.first)
                ctrl.write(b.addr, wdata.data);
-               //$display("mkPipeOutMemSlave.writeData.put addr=%h data=%h", b.addr, d.data);
-               if (b.last)
-                  fifoWriteDoneFifo.enq(b.tag);
+            //$display("mkPipeOutMemSlave.writeData.put addr=%h data=%h", b.addr, d.data);
+            if (b.last)
+               fifoWriteDoneFifo.enq(b.tag);
          endmethod
       endinterface
       interface Get writeDone;
