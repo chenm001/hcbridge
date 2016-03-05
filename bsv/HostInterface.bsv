@@ -33,8 +33,8 @@ import AxiMasterSlave    :: *;
 import MemTypes          :: *;
 
 // this interface should allow for different master and slave bus paraters;                 
-interface BsimHost#(numeric type clientAddrWidth, numeric type clientBusWidth, numeric type clientIdWidth,  
-                    numeric type serverAddrWidth, numeric type serverBusWidth, numeric type serverIdWidth,
+interface BsimHost#(numeric type clientAddrWidth, numeric type clientBusWidth,  
+                    numeric type serverAddrWidth, numeric type serverBusWidth,
                     numeric type nSlaves);
    interface PhysMemMaster#(clientAddrWidth, clientBusWidth)  mem_client;
    interface Vector#(nSlaves,PhysMemSlave#(serverAddrWidth,  serverBusWidth))  mem_servers;
@@ -42,7 +42,7 @@ interface BsimHost#(numeric type clientAddrWidth, numeric type clientBusWidth, n
    interface Reset derivedReset;
 endinterface
 
-typedef BsimHost#(32,32,12,40,DataBusWidth,6,NumberOfMasters) HostInterface;
+typedef BsimHost#(32,32,40,DataBusWidth,NumberOfMasters) HostInterface;
 `endif
 
 ////////////////////////////// Xsim /////////////////////////////////

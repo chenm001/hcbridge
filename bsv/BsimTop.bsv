@@ -128,9 +128,9 @@ module mkBsimCtrlReadWrite(PhysMemMaster#(clientAddrWidth, clientBusWidth))
    endinterface
 endmodule
 
-module  mkBsimHost#(Clock derived_clock, Reset derived_reset)(BsimHost#(clientAddrWidth, clientBusWidth, clientIdWidth,
-                              serverAddrWidth, serverBusWidth, serverIdWidth,
-                              nSlaves))
+module  mkBsimHost#(Clock derived_clock, Reset derived_reset)(BsimHost#(clientAddrWidth, clientBusWidth,
+                                                                        serverAddrWidth, serverBusWidth,
+                                                                        nSlaves))
    provisos (Add#(a__, 32, clientAddrWidth), Add#(b__, 32, clientBusWidth),
              Mul#(TDiv#(serverBusWidth, 32), 32, serverBusWidth),
              Mul#(TDiv#(serverBusWidth, 8), 8, serverBusWidth),
@@ -159,7 +159,7 @@ module  mkBsimTop(BsimTop);
    Reset derivedReset <- exposeCurrentReset;
    let single_reset <- mkReset(2, True, singleClock);
    Reset singleReset = single_reset.new_rst;
-   BsimHost#(32,32,12,PhysAddrWidth,DataBusWidth,4,NumberOfMasters) host <- mkBsimHost(clocked_by singleClock, reset_by singleReset, derivedClock, derivedReset);
+   BsimHost#(32,32,PhysAddrWidth,DataBusWidth,NumberOfMasters) host <- mkBsimHost(clocked_by singleClock, reset_by singleReset, derivedClock, derivedReset);
    Vector#(NumberOfUserTiles,ConnectalTop) ts <- replicateM(mkConnectalTop(
 `ifdef IMPORT_HOSTIF
        host,
