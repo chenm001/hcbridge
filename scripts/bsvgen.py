@@ -139,28 +139,6 @@ instance Connectable#(%(Ifc)sInverse, %(Ifc)sOutputPipeMethods);
    endmodule
 endinstance
 
-(* synthesize *)
-module mk%(Ifc)sInverter(%(Ifc)sInverter);
-%(inverseIndicationMethodRules)s
-    interface %(Package)s%(Ifc)s ifc;
-%(inverseIndicationMethods)s
-    endinterface
-    interface %(Ifc)sInverse inverseIfc;
-%(inverseIndicationInverseMethods)s
-    endinterface
-endmodule
-
-(* synthesize *)
-module mk%(Ifc)sInverterV(%(Ifc)sInverter);
-%(wInverseIndicationMethodRules)s
-    interface %(Package)s%(Ifc)s ifc;
-%(wInverseIndicationMethods)s
-    endinterface
-    interface %(Ifc)sInverse inverseIfc;
-%(wInverseIndicationInverseMethods)s
-    endinterface
-endmodule
-
 // synthesizeable proxy MemPortal
 (* synthesize *)
 module mk%(Dut)sSynth#(Bit#(SlaveDataBusWidth) id)(%(Dut)s);
