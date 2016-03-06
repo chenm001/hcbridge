@@ -133,30 +133,6 @@ typedef struct PortalMuxHandler {
     PortalInternal *pint;
 } PortalMuxHandler;
 
-/*
- * Struct definitions for optional parameter when initializing transport for portal
- */
-typedef int (*SHARED_CONFIG_SETSGLID)(struct PortalInternal *, const uint32_t sglId);
-typedef int (*SHARED_MMUINDICATION_POLL)(PortalInternal *p, uint32_t *arg_id);
-typedef struct {
-    struct {
-        struct DmaManager *manager;
-        int reqport;
-        int reqinfo;
-        int indport;
-        int indinfo;
-        PORTAL_INDFUNC     handler;
-        void              *callbackFunctions;
-        SHARED_MMUINDICATION_POLL poll;
-    } dma;
-    uint32_t    size;
-    struct {
-        int port;
-        uint32_t reqinfo;
-        SHARED_CONFIG_SETSGLID setSglId;
-    } hardware;
-} PortalSharedParam; /* for ITEMINIT function */
-
 typedef struct {
     PortalInternal       *pint;
     void                 *socketParam;
@@ -177,7 +153,6 @@ enum {ITYPE_other, ITYPE_int16_t, ITYPE_uint16_t, ITYPE_uint32_t, ITYPE_uint64_t
 typedef int Bool;   /* for GeneratedTypes.h */
 typedef uint32_t fixed32; /* for GeneratedTypes.h from protobuf */
 
-#define SHARED_DMA(REQPORTALNAME, INDPORTALNAME) {NULL, (REQPORTALNAME), MMURequest_reqinfo, (INDPORTALNAME), MMUIndication_reqinfo, MMUIndication_handleMessage, (void *)&manualMMU_Cb, manualWaitForResp}
 #define SHARED_HARDWARE(PORTALNAME) {(PORTALNAME), SharedMemoryPortalConfig_reqinfo, SharedMemoryPortalConfig_setSglId}
 #define Connectaloffsetof(TYPE, MEMBER) ((unsigned long)&((TYPE *)0)->MEMBER)
 
