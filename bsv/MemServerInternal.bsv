@@ -130,7 +130,6 @@ module mkPhysMemReadInternal#(MemServerIndication ind)
    // performance analytics 
    Reg#(Bit#(64)) cycle_cnt <- mkReg(0);
    Reg#(Bit#(64)) last_loadClient <- mkReg(0);
-   Reg#(Bit#(64)) last_mmuResp <- mkReg(0);
    Reg#(Bit#(64)) last_comp <- mkReg(0);
    Reg#(Bit#(64)) last_readReq <- mkReg(0);
    Reg#(Bit#(64)) last_readData <- mkReg(0);
@@ -154,8 +153,6 @@ module mkPhysMemReadInternal#(MemServerIndication ind)
       
       serverRequest.enq(RRec{req:request.req, pa:physAddr, client:request.client, rename_tag:extend(rename_tag)});
       if (verbose) $display("mkMemReadInternal::checkMmuResp: client=%d, tag=%d rename_tag=%d burstLen=%d", request.client, request.req.tag, rename_tag, burstLenBeats);
-      if (verbose) $display("mkMemReadInternal::mmuResp %d %d", request.client, cycle_cnt-last_mmuResp);
-      last_mmuResp <= cycle_cnt;
    endrule
    
    rule read_data;
@@ -321,7 +318,6 @@ module mkMemWriteInternal#(MemServerIndication ind)
 
    Reg#(Bit#(64)) cycle_cnt <- mkReg(0);
    Reg#(Bit#(64)) last_loadClient <- mkReg(0);
-   Reg#(Bit#(64)) last_mmuResp <- mkReg(0);
 
    (* fire_when_enabled *)
    rule cycle;
@@ -342,8 +338,6 @@ module mkMemWriteInternal#(MemServerIndication ind)
       let rename_tag <- tag_gen.getTag;
       serverRequest.enq(RRec{req:req, pa:physAddr, client:client, rename_tag:extend(rename_tag)});
       //if (verbose) $display("mkMemWriteInternal::checkMmuResp: client=%d, rename_tag=%d", client,rename_tag);
-      if (verbose) $display("mkMemWriteInternal::mmuResp %d %d", client, cycle_cnt-last_mmuResp);
-      last_mmuResp <= cycle_cnt;
    endrule
    
    rule writeDoneComp0;
