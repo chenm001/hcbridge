@@ -360,7 +360,7 @@ module mkMemMethodMuxOut#(PortalCtrl#(aw,dataWidth) ctrl, Vector#(numIndications
             let b <- fifoWriteAddrGenerator.addrBeat.get();
             if (wsCtrl.first)
                ctrl.write(b.addr, wdata.data);
-            //$display("mkPipeOutMemSlave.writeData.put addr=%h data=%h", b.addr, d.data);
+            //$display("mkPipeOutMemSlave.writeData.put addr=%h data=%h", b.addr, wdata.data);
             if (b.last)
                fifoWriteDoneFifo.enq(b.tag);
          endmethod
