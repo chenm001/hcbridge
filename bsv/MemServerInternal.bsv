@@ -97,8 +97,6 @@ module mkPhysMemReadInternal#(MemServerIndication ind)
    Vector#(4,Reg#(Bool)) killv <- replicateM(mkReg(False));
    Vector#(4,Reg#(Bool)) stopv <- replicateM(mkReg(False));
    
-   // stage 0: address translation (latency = 1)
-   FIFO#(LRec#(numServers,addrWidth,busWidth)) clientRequest <- mkFIFO;
    // stage 1: address validation (latency = 1)
    FIFO#(RRec#(numServers,addrWidth,busWidth)) serverRequest <- mkFIFO;
    // stage 2: read commands
@@ -144,17 +142,6 @@ module mkPhysMemReadInternal#(MemServerIndication ind)
       ind.error(extend(pack(error.errorType)), 0, 0);
    endrule
          
-   rule checkMmuResp;
-      let request <- toGet(clientRequest).get();
-      let physAddr = request.req.addr;
-      let rename_tag <- tag_gen.getTag;
-      let burstLenBeats = request.req.burstLen >> beat_shift;
-      clientBurstLen.upd(truncate(rename_tag), tuple2(burstLenBeats == 1, burstLenBeats));
-      
-      serverRequest.enq(RRec{req:request.req, pa:physAddr, client:request.client, rename_tag:extend(rename_tag)});
-      if (verbose) $display("mkMemReadInternal::checkMmuResp: client=%d, tag=%d rename_tag=%d burstLen=%d", request.client, request.req.tag, rename_tag, burstLenBeats);
-   endrule
-   
    rule read_data;
       let response <- toGet(serverData).get();
       let drq <- serverProcessing.portA.response.get;
@@ -223,7 +210,14 @@ module mkPhysMemReadInternal#(MemServerIndication ind)
                         if (verbose) $display("mkMemReadInternal::loadClient server %d burstLen %d tag %d cycle %d",
                                               i, req.burstLen >> beat_shift, req.tag, cycle_cnt-last_loadClient);
                         if (stopv[req.tag[5:4]] == False) begin
-                           clientRequest.enq(LRec{req:req, client:fromInteger(i)});
+                           let client = fromInteger(i);
+                           let physAddr = req.addr;
+                           let rename_tag <- tag_gen.getTag;
+                           let burstLenBeats = req.burstLen >> beat_shift;
+                           clientBurstLen.upd(truncate(rename_tag), tuple2(burstLenBeats == 1, burstLenBeats));
+
+                           serverRequest.enq(RRec{req:req, pa:physAddr, client:client, rename_tag:extend(rename_tag)});
+                           if (verbose) $display("mkMemReadInternal::readReq: client=%d, tag=%d rename_tag=%d burstLen=%d", client, req.tag, rename_tag, burstLenBeats);
                         end
                      endmethod
                   endinterface
@@ -299,8 +293,6 @@ module mkMemWriteInternal#(MemServerIndication ind)
    Vector#(4,Reg#(Bool)) killv <- replicateM(mkReg(False));
    Vector#(4,Reg#(Bool)) stopv <- replicateM(mkReg(False));
 
-   // stage 0: address translation (latency = 1)
-   FIFO#(LRec#(numServers,addrWidth,busWidth)) clientRequest <- mkFIFO;
    // stage 1: address validation (latency = 1)
    FIFO#(RRec#(numServers,addrWidth,busWidth)) serverRequest <- mkFIFO;
    // stage 2: write commands
@@ -330,16 +322,6 @@ module mkMemWriteInternal#(MemServerIndication ind)
       ind.error(extend(pack(error.errorType)), 0, 0);
    endrule
 
-   rule checkMmuResp;
-      let request <- toGet(clientRequest).get;
-      let req = request.req;
-      let client = request.client;
-      let physAddr = req.addr;
-      let rename_tag <- tag_gen.getTag;
-      serverRequest.enq(RRec{req:req, pa:physAddr, client:client, rename_tag:extend(rename_tag)});
-      //if (verbose) $display("mkMemWriteInternal::checkMmuResp: client=%d, rename_tag=%d", client,rename_tag);
-   endrule
-   
    rule writeDoneComp0;
       let tag <- tag_gen.complete;
       respFifos.portB.request.put(BRAMRequest{write:False, address:tag, datain: ?, responseOnWrite: ?});
@@ -391,7 +373,11 @@ module mkMemWriteInternal#(MemServerIndication ind)
                         if (verbose) $display("mkMemWriteInternal::loadClient %d %d", i, cycle_cnt-last_loadClient);
                         last_loadClient <= cycle_cnt;
                         if (stopv[req.tag[5:4]] == False) begin
-                           clientRequest.enq(LRec{req:req, client:fromInteger(i)});
+                           let client = fromInteger(i);
+                           let physAddr = req.addr;
+                           let rename_tag <- tag_gen.getTag;
+                           serverRequest.enq(RRec{req:req, pa:physAddr, client:client, rename_tag:extend(rename_tag)});
+                           if (verbose) $display("mkMemWriteInternal::writeReq: client=%d, rename_tag=%d", client, rename_tag);
                         end
                      endmethod
                   endinterface
