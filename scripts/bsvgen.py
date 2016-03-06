@@ -50,7 +50,6 @@ import CtrlMux::*;
 import MemTypes::*;
 import Pipe::*;
 import HostInterface::*;
-import LinkerLib::*;
 %(extraImports)s
 
 '''
