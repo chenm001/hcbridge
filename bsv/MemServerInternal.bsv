@@ -35,14 +35,11 @@ import DefaultValue::*;
 import MemTypes::*;
 import ToolMemory::*;
 import ToolClocks::*;
-import MMU::*;
 import ToolCompletionBuffer::*;
 import ToolConfig::*;
 `include "ProjectConfig.bsv"
 
 typedef 32 BeatCountSize;
-
-typedef 9 MMU_PIPELINE_DEPTH;
 
 interface DmaDbg;
    method ActionValue#(Bit#(64)) getMemoryTraffic();
@@ -62,10 +59,6 @@ interface PhysMemReadInternal#(numeric type addrWidth, numeric type busWidth, nu
    interface PhysMemReadClient#(addrWidth,busWidth) client;
    interface Vector#(numServers, PhysMemReadServer#(addrWidth,busWidth)) servers;
 endinterface
-
-function Bool sglid_outofrange(SGLId p);
-   return ((p[15:0]) >= fromInteger(valueOf(MaxNumSGLists)));
-endfunction
 
 import RegFile::*;
 
@@ -90,8 +83,7 @@ typedef struct {Bit#(MemTagSize) orig_tag;
 typedef struct {DmaErrorType errorType;
                 Bit#(32) pref; } DmaError deriving (Bits);
 
-module mkPhysMemReadInternal#(MemServerIndication ind,
-                          Vector#(numMMUs,Server#(AddrTransRequest,Bit#(addrWidth))) mmus) 
+module mkPhysMemReadInternal#(MemServerIndication ind) 
    (PhysMemReadInternal#(addrWidth, busWidth, numTags, numServers))
    provisos(Log#(busWidthBytes,beatShift)
             ,Div#(busWidth,8,busWidthBytes)
@@ -294,8 +286,7 @@ module mkPhysMemReadInternal#(MemServerIndication ind,
    endinterface
 endmodule
 
-module mkMemWriteInternal#(MemServerIndication ind, 
-                           Vector#(numMMUs,Server#(AddrTransRequest,Bit#(addrWidth))) mmus)
+module mkMemWriteInternal#(MemServerIndication ind)
    (MemWriteInternal#(addrWidth, busWidth, numTags, numServers))
    provisos(Log#(busWidthBytes,beatShift)
             ,Div#(busWidth,8,busWidthBytes)

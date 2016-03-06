@@ -97,7 +97,7 @@ ifneq ($(MEM_WRITE_INTERFACES),)
 USE_AUTOTOP = 1
 endif
 
-INTERFACES += MemServerRequest MMURequest MemServerIndication MMUIndication
+INTERFACES += MemServerRequest MemServerIndication
 BSVFILES += $(TOOLDIR)/bsv/ToolMemory.bsv
 ifneq ($(NUMBER_OF_MASTERS), 0)
 CPPFILES += #$(TOOLDIR)/cpp/platformMemory.cpp

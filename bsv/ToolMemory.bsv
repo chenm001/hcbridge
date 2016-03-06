@@ -46,8 +46,6 @@ typedef enum {
    DmaErrorNone,
    DmaErrorSGLIdOutOfRange_r,
    DmaErrorSGLIdOutOfRange_w,
-   DmaErrorMMUOutOfRange_r,
-   DmaErrorMMUOutOfRange_w,
    DmaErrorOffsetOutOfRange,
    DmaErrorSGLIdInvalid,
    DmaErrorTileTagOutOfRange
@@ -63,33 +61,7 @@ interface MemServerIndication;
    method Action error(Bit#(32) code, Bit#(64) offset, Bit#(64) extra);
 endinterface
 
-//
-// @brief Events sent from a MMU
-//
-interface MMUIndication;
-   method Action idResponse(Bit#(32) sglId);
-   method Action configResp(Bit#(32) sglId);
-   method Action error(Bit#(32) code, Bit#(32) sglId, Bit#(64) offset, Bit#(64) extra);
-endinterface
-
 typedef Bit#(32) SpecialTypeForSendingFd;
-//
-// @brief Configuration interface to an MMU
-//
-interface MMURequest;
-   //
-   // @brief Adds an address translation entry to the scatter-gather list for an object
-   //
-   // @param sglId Specifies the object to be translated
-   // @param addr Physical address of the segment
-   // @param len Length of the segment
-   //
-   method Action sglist(Bit#(32) sglId, Bit#(32) sglIndex, Bit#(64) addr,  Bit#(32) len);
-   method Action region(Bit#(32) sglId, Bit#(64) barr12, Bit#(32) index12, Bit#(64) barr8, Bit#(32) index8, Bit#(64) barr4, Bit#(32) index4, Bit#(64) barr0, Bit#(32) index0);
-   method Action idRequest(SpecialTypeForSendingFd fd);
-   method Action idReturn(Bit#(32) sglId);
-   method Action setInterface(Bit#(32) interfaceId, Bit#(32) sglId);
-endinterface
 
 typedef enum {
    Idle, Stopped, Running
