@@ -35,7 +35,6 @@ def newArgparser():
     argparser.add_argument('--proxy', default=[], help='exported proxy interfaces', action='append')
     argparser.add_argument('--memread', default=[], help='memory read interfaces', action='append')
     argparser.add_argument('--memwrite', default=[], help='memory read interfaces', action='append')
-    argparser.add_argument('--cnoc', help='generate mkCnocTop', action='store_true')
     argparser.add_argument('--integratedIndication', help='indication pipes instantiated in user module', action='store_true')
     return argparser
 
@@ -102,60 +101,6 @@ ifcnamesTemplate='''
 typedef enum {NoInterface, %(enumList)s} IfcNames deriving (Eq,Bits);
 '''
 
-topNocTemplate='''
-import ToolConfig::*;
-import Vector::*;
-import Portal::*;
-import CnocPortal::*;
-import Connectable::*;
-import HostInterface::*;
-import IfcNames::*;
-import MemTypes::*;
-%(generatedImport)s
-`include "ProjectConfig.bsv"
-
-%(generatedTypedefs)s
-
-`ifndef IMPORT_HOSTIF
-(* synthesize *)
-`endif
-module mkCnocTop
-`ifdef IMPORT_HOSTIF
-       #(HostInterface host)
-`else
-`ifdef IMPORT_HOST_CLOCKS // enables synthesis boundary
-       #(Clock derivedClockIn, Reset derivedResetIn)
-`else
-// otherwise no params
-`endif
-`endif
-       (%(moduleParam)s);
-   Clock defaultClock <- exposeCurrentClock();
-   Reset defaultReset <- exposeCurrentReset();
-`ifdef IMPORT_HOST_CLOCKS // enables synthesis boundary
-   HostInterface host = (interface HostInterface;
-                           interface Clock derivedClock = derivedClockIn;
-                           interface Reset derivedReset = derivedResetIn;
-                         endinterface);
-`endif
-%(pipeInstantiate)s
-
-%(portalInstantiate)s
-%(connectInstantiate)s
-
-%(portalList)s
-   Vector#(NumWriteClients,MemWriteClient#(DataBusWidth)) nullWriters = replicate(null_mem_write_client());
-   Vector#(NumReadClients,MemReadClient#(DataBusWidth)) nullReaders = replicate(null_mem_read_client());
-
-   interface requests = %(requestList)s;
-   interface indications = %(indicationList)s;
-   interface readers = take(%(portalReaders)s);
-   interface writers = take(%(portalWriters)s);
-%(exportedInterfaces)s
-endmodule : mkCnocTop
-%(exportedNames)s
-'''
-
 topEnumTemplate='''
 typedef enum {NoInterface, %(enumList)s} IfcNames;
 '''
@@ -167,8 +112,6 @@ portalTemplate = '''   PortalCtrlMemSlave#(SlaveControlAddrWidth,SlaveDataBusWid
        interface ReadOnly interrupt = ctrlPort_%(count)s.interrupt;
        interface WriteOnly num_portals = ctrlPort_%(count)s.num_portals;
        endinterface);'''
-
-portalNocTemplate = '''   let %(ifcNameNoc)s <- mkPortalMsg%(direction)s(extend(pack(%(enumVal)s)), %(ifcName)s.%(itype)s%(messageSize)s);'''
 
 def addPortal(outputPrefix, enumVal, ifcName, direction):
     global portalCount
@@ -188,7 +131,7 @@ def addPortal(outputPrefix, enumVal, ifcName, direction):
         portParam['slaveType'] = 'Out'
         portParam['intrParam'] = ', %(ifcName)s.intr' % portParam
         portParam['messageSize'] = ', %(ifcName)s.messageSize' % portParam
-    p = portalNocTemplate if options.cnoc else portalTemplate
+    p = portalTemplate
     portalList.append(p % portParam)
     portalCount = portalCount + 1
 
@@ -293,12 +236,7 @@ if __name__=='__main__':
     instantiatedModules = []
     exportedNames = []
     options.importfiles.append('`PinTypeInclude')
-    if options.board == 'xsim':
-        options.cnoc = True
-    if options.cnoc:
-        exportedNames.extend(['export mkCnocTop;', 'export NumberOfRequests;', 'export NumberOfIndications;'])
-    else:
-        exportedNames.extend(['export mkConnectalTop;'])
+    exportedNames.extend(['export mkConnectalTop;'])
     if options.importfiles:
         for item in options.importfiles:
              exportedNames.append('export %s::*;' % item)
@@ -372,16 +310,12 @@ if __name__=='__main__':
                  'portalMaster' : 'lMemServer.masters' if memory_flag else 'nil',
 #TODO: add a flag to enable pins interface                 
                  'pinsInterface' : '    interface pins = l%(usermod)s.pins;\n' % pmap if False else '',
-                 'moduleParam' : 'ConnectalTop' if not options.cnoc \
-                     else 'CnocTop#(NumberOfRequests,NumberOfIndications,PhysAddrWidth,DataBusWidth,`PinType,NumberOfMasters)'
+                 'moduleParam' : 'ConnectalTop'
                  }
     topFilename = project_dir + '/Top.bsv'
     print 'Writing:', topFilename
     top = util.createDirAndOpen(topFilename, 'w')
-    if options.cnoc:
-        top.write(topNocTemplate % topsubsts)
-    else:
-        top.write(topTemplate % topsubsts)
+    top.write(topTemplate % topsubsts)
     top.close()
     topFilename = project_dir + '/IfcNames.bsv'
     print 'Writing:', topFilename

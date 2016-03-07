@@ -45,29 +45,6 @@ endinterface
 typedef BsimHost#(32,32,40,DataBusWidth,NumberOfMasters) HostInterface;
 `endif
 
-////////////////////////////// Xsim /////////////////////////////////
-`ifdef XsimHostInterface
-
-import Vector            :: *;
-import AxiMasterSlave    :: *;
-import MemTypes          :: *;
-
-// this interface should allow for different master and slave bus paraters;
-interface XsimHost;
-   interface Clock derivedClock;
-   interface Reset derivedReset;
-   interface Clock tsys_clk_200mhz_buf;
-endinterface
-
-module  mkXsimHost#(Clock derivedClock, Reset derivedReset, Clock sys_clk)(XsimHost);
-   interface derivedClock = derivedClock;
-   interface derivedReset = derivedReset;
-   interface tsys_clk_200mhz_buf = sys_clk;
-endmodule
-
-typedef XsimHost HostInterface;
-`endif
-
 ////////////////////////////// PciE /////////////////////////////////
 `ifndef PcieHostIF
 `ifdef PcieHostInterface

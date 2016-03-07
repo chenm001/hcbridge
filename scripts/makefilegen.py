@@ -232,7 +232,6 @@ include $(DTOP)/Makefile.autotop
 include $(TOOLDIR)/scripts/Makefile.application
 SOURCES = %(source)s $(PORTAL_SRC_FILES)
 SOURCES2 = %(source2)s $(PORTAL_SRC_FILES)
-XSOURCES = $(TOOLDIR)/cpp/XsimTop.cpp $(PORTAL_SRC_FILES)
 LDLIBS := %(clibdirs)s %(clibs)s %(clibfiles)s -pthread 
 
 ubuntu.exe: $(SOURCES)
@@ -245,8 +244,6 @@ connectal.so: $(SOURCES)
 ubuntu.exe2: $(SOURCES2)
 	$(Q)g++ $(CFLAGS) $(CFLAGS2) -o ubuntu.exe2 $(SOURCES2) $(LDLIBS)
 
-xsim: $(XSOURCES)
-	g++ $(CFLAGS) -o xsim $(XSOURCES)
 '''
 
 if __name__=='__main__':
