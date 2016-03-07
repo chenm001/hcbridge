@@ -47,8 +47,6 @@ import Portal::*;
 import CtrlMux::*;
 import HostInterface::*;
 import Connectable::*;
-import MemReadEngine::*;
-import MemWriteEngine::*;
 import MemTypes::*;
 import MemServer::*;
 import IfcNames::*;
@@ -140,15 +138,11 @@ class iReq:
         self.inst = ''
         self.args = []
 
-memEngineInst = '''   MemReadEngine#(64,64,2,%(clientCount)s) lSharereadEngine <- mkMemReadEngine();
-   MemWriteEngine#(64,64,2,%(clientCount)s) lSharewriteEngine <- mkMemWriteEngine();'''
-
 pipeInstantiation = '''   %(modname)s%(tparam)s l%(modname)s%(number)s <- mk%(modname)s;'''
 
 connectInstantiation = '''   mkConnection(l%(modname)s%(number)s.pipes, l%(userIf)s);'''
 
 def instMod(pmap, args, modname, modext, constructor, tparam):
-    global clientCount
     if not modname:
         return
     map = pmap.copy()
@@ -221,7 +215,6 @@ if __name__=='__main__':
         print "topgen: --project-dir option missing"
         sys.exit(1)
     project_dir = os.path.abspath(os.path.expanduser(options.project_dir))
-    clientCount = 0
     userFiles = []
     portalInstantiate = []
     pipeInstantiate = []
@@ -290,8 +283,6 @@ if __name__=='__main__':
         interfaceList.append('   interface %s = l%s;' % (p[0], p[1]))
 
     memory_flag = 'MemServer' in instantiatedModules
-    if clientCount:
-        pipeInstantiate.append(memEngineInst % {'clientCount': clientCount})
     topsubsts = {'enumList': ','.join(options.portname),
                  'generatedImport': '\n'.join(['import %s::*;' % p for p in options.importfiles]),
                  'generatedTypedefs': '\n'.join(['typedef %d NumberOfRequests;' % len(requestList),
