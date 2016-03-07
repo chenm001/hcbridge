@@ -197,24 +197,14 @@ class iReq:
         self.inst = ''
         self.args = []
 
-memShareInst = '''   SharedMemoryPortalConfigInput%(tparam)s l%(modname)sCW <- mkSharedMemoryPortalConfigInput;'''
-
 memEngineInst = '''   MemReadEngine#(64,64,2,%(clientCount)s) lSharereadEngine <- mkMemReadEngine();
    MemWriteEngine#(64,64,2,%(clientCount)s) lSharewriteEngine <- mkMemWriteEngine();'''
-
-memModuleInstantiation = '''   SharedMemoryPortal#(64) l%(modname)sShare <- mkSharedMemory%(stype)sPortal(l%(modname)s%(number)s.portalIfc,
-           get%(modnamebase)sMessageSize,
-           takeAt(%(clientCount)s, lSharereadEngine.readServers), takeAt(%(clientCount)s, lSharewriteEngine.writeServers));'''
-
-memConnection = '''   mkConnection(l%(modname)sCW.pipes, l%(modname)sShare.cfg);'''
-
-connectUser = '''   mkConnection(lSimpleRequestInput.pipes, %(args)s);'''
 
 pipeInstantiation = '''   %(modname)s%(tparam)s l%(modname)s%(number)s <- mk%(modname)s;'''
 
 connectInstantiation = '''   mkConnection(l%(modname)s%(number)s.pipes, l%(userIf)s);'''
 
-def instMod(pmap, args, modname, modext, constructor, tparam, memFlag):
+def instMod(pmap, args, modname, modext, constructor, tparam):
     global clientCount
     if not modname:
         return
@@ -230,26 +220,13 @@ def instMod(pmap, args, modname, modext, constructor, tparam, memFlag):
     pmap['args'] = args % pmap
     if modext:
         options.portname.append('IfcNames_' + modname + tstr + pmap['number'])
-        pmap['argsConfig'] = modname + memFlag + tstr
+        pmap['argsConfig'] = modname + tstr
         outputPrefix = ''
         if modext == 'Output':
             pmap['stype'] = 'Indication';
         else:
             pmap['stype'] = 'Request';
-        if memFlag:
-            if modext == 'Output':
-                pmap['args'] = '';
-            else:
-                pmap['args'] = 'l%(userIf)s' % pmap
-            pmap['clientCount'] = clientCount;
-            pipeInstantiate.append(pipeInstantiation % pmap)
-            pipeInstantiate.append(memShareInst % pmap)
-            portalInstantiate.append(memModuleInstantiation % pmap)
-            connectInstantiate.append(memConnection % pmap)
-            if modext != 'Output':
-                connectInstantiate.append(connectUser % pmap)
-            clientCount += 2
-        elif modext == 'Output':
+        if modext == 'Output':
             if options.integratedIndication:
                 outputPrefix = 'l' + pmap['usermod'] + '.'
             else:
@@ -257,11 +234,7 @@ def instMod(pmap, args, modname, modext, constructor, tparam, memFlag):
         else:
             pipeInstantiate.append(pipeInstantiation % pmap)
             connectInstantiate.append(connectInstantiation % pmap)
-        if memFlag:
-            options.portname.append('IfcNames_' + modname + memFlag + tstr + pmap['number'])
-            addPortal('', 'IfcNames_' + pmap['argsConfig'], 'l%(modname)sCW' % pmap, 'Request')
-        else:
-            addPortal(outputPrefix, 'IfcNames_' + pmap['args'] + pmap['number'], 'l%(modname)s%(number)s' % pmap, pmap['stype'])
+        addPortal(outputPrefix, 'IfcNames_' + pmap['args'] + pmap['number'], 'l%(modname)s%(number)s' % pmap, pmap['stype'])
     else:
         if not instantiateRequest.get(pmap['modname']):
             instantiateRequest[pmap['modname']] = iReq()
@@ -286,7 +259,7 @@ def toVectorLiteral(l):
 
 def parseParam(pitem, proxy):
     p = pitem.split(':')
-    pmap = {'tparam': '', 'xparam': '', 'uparam': '', 'memFlag': 'Pipes' if p[0][0] == '/' else ''}
+    pmap = {'tparam': '', 'xparam': '', 'uparam': ''}
     print 'pmap=', pmap
     pmap['usermod'] = p[0].replace('/','').replace('!','')
     pmap['name'] = p[1]
@@ -345,13 +318,13 @@ if __name__=='__main__':
                 else:
                     modcount[pmap['name']] = 1
                     pmap['number'] = str(0)
-            instMod(pmap, '', pmap['name'], 'Output', '', '', pmap['memFlag'])
+            instMod(pmap, '', pmap['name'], 'Output', '', '')
             argstr = pmap['uparam']
             if not options.integratedIndication:
                 argstr += ('l%(name)sOutput%(number)s.ifc')
             if pmap['uparam'] and pmap['uparam'][0] == '/':
                 argstr = 'l%(name)sOutput%(number)s.ifc, ' + pmap['uparam'][1:-2]
-            instMod(pmap, argstr, pmap['usermod'], '', '', pmap['xparam'], False)
+            instMod(pmap, argstr, pmap['usermod'], '', '', pmap['xparam'])
             pmap['uparam'] = ''
     modcount = {}
     for pitem in options.wrapper:
@@ -368,9 +341,9 @@ if __name__=='__main__':
             number += 1
             pmap['usermod'] = pmap['userIf'].split('.')[0]
             if pmap['usermod'] not in instantiatedModules:
-                instMod(pmap, pmap['uparam'], pmap['usermod'], '', '', pmap['xparam'], False)
+                instMod(pmap, pmap['uparam'], pmap['usermod'], '', '', pmap['xparam'])
             flushModules(pmap['usermod'])
-            instMod(pmap, '', pmap['name'], 'Input', '', '', pmap['memFlag'])
+            instMod(pmap, '', pmap['name'], 'Input', '', '')
             portalInstantiate.append('')
     for key in instantiatedModules:
         flushModules(key)
