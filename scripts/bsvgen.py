@@ -122,21 +122,6 @@ instance PortalMessageSize#(%(Ifc)sOutput);
 endinstance
 
 
-interface %(Ifc)sInverse;
-%(indicationInverseMethodDecls)s
-endinterface
-
-interface %(Ifc)sInverter;
-    interface %(Package)s%(Ifc)s ifc;
-    interface %(Ifc)sInverse inverseIfc;
-endinterface
-
-instance Connectable#(%(Ifc)sInverse, %(Ifc)sOutputPipeMethods);
-   module mkConnection#(%(Ifc)sInverse in, %(Ifc)sOutputPipeMethods out)(Empty);
-%(indicationInverseConnect)s
-   endmodule
-endinstance
-
 // synthesizeable proxy MemPortal
 (* synthesize *)
 module mk%(Dut)sSynth#(Bit#(SlaveDataBusWidth) id)(%(Dut)s);
@@ -288,40 +273,6 @@ indicationMethodTemplate='''
         //$display(\"indicationMethod \'%(methodName)s\' invoked\");
     endmethod'''
 
-indicationInverseDeclTemplate='''    method ActionValue#(%(MethodName)s_Message) %(methodName)s;
-'''
-
-inverseIndicationRuleTemplate='''    FIFOF#(%(MethodName)s_Message) fifo_%(methodName)s <- mkFIFOF();
-'''
-
-inverseIndicationMethodTemplate='''
-    method Action %(methodName)s(%(formals)s);
-        fifo_%(methodName)s.enq(%(MethodName)s_Message {%(structElements)s});
-    endmethod'''
-
-inverseIndicationInverseMethodTemplate='''
-    method ActionValue#(%(MethodName)s_Message) %(methodName)s;
-        fifo_%(methodName)s.deq;
-        return fifo_%(methodName)s.first;
-    endmethod'''
-
-indicationInverseConnectTemplate='''    mkConnection(in.%(methodName)s, out.%(methodName)s);
-'''
-
-wInverseIndicationRuleTemplate='''    PutInverter#(%(MethodName)s_Message) inv_%(methodName)s <- mkPutInverter();
-'''
-
-wInverseIndicationMethodTemplate='''
-    method Action %(methodName)s(%(formals)s);
-        inv_%(methodName)s.mod.put(%(MethodName)s_Message {%(structElements)s});
-    endmethod'''
-
-wInverseIndicationInverseMethodTemplate='''
-    method ActionValue#(%(MethodName)s_Message) %(methodName)s;
-        let v <- inv_%(methodName)s.inverse.get;
-        return v;
-    endmethod'''
-
 def toBsvType(titem, oitem):
     if oitem and oitem['name'].startswith('Tuple'):
         titem = oitem
@@ -390,14 +341,6 @@ def fixupSubsts(item, suffix):
     substs['indicationMethodDecls'] = collectElements(dlist, indicationDeclTemplate, name)
     substs['indicationMethodAssigns'] = collectElements(dlist, indicationAssignTemplate, name)
     substs['indicationMethods'] = collectElements(dlist, indicationMethodTemplate, name)
-    substs['indicationInverseMethodDecls'] = collectElements(dlist, indicationInverseDeclTemplate, name)
-    substs['inverseIndicationMethodRules'] = collectElements(dlist, inverseIndicationRuleTemplate, name)
-    substs['inverseIndicationMethods'] = collectElements(dlist, inverseIndicationMethodTemplate, name)
-    substs['inverseIndicationInverseMethods'] = collectElements(dlist, inverseIndicationInverseMethodTemplate, name)
-    substs['indicationInverseConnect'] = collectElements(dlist, indicationInverseConnectTemplate, name)
-    substs['wInverseIndicationMethodRules'] = collectElements(dlist, wInverseIndicationRuleTemplate, name)
-    substs['wInverseIndicationMethods'] = collectElements(dlist, wInverseIndicationMethodTemplate, name)
-    substs['wInverseIndicationInverseMethods'] = collectElements(dlist, wInverseIndicationInverseMethodTemplate, name)
     substs['requestElements'] = collectElements(dlist, requestStructTemplate, name)
     substs['methodRules'] = collectElements(dlist, requestRuleTemplate, name)
     substs['methodDef'] = collectElements(dlist, methodDefTemplate, name)
