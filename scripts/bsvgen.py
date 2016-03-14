@@ -40,7 +40,6 @@ import Connectable::*;
 import Clocks::*;
 import FloatingPoint::*;
 import Adapter::*;
-import Leds::*;
 import Vector::*;
 import SpecialFIFOs::*;
 import ToolConfig::*;
