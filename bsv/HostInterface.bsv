@@ -29,7 +29,6 @@ import ToolConfig::*;
 `ifdef BsimHostInterface
 
 import Vector            :: *;
-import AxiMasterSlave    :: *;
 import MemTypes          :: *;
 
 // this interface should allow for different master and slave bus paraters;                 
