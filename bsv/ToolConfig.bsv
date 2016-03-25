@@ -34,8 +34,7 @@ typedef `SlaveDataBusWidth SlaveDataBusWidth;
 typedef `DataBusWidth DataBusWidth;
 typedef `NumberOfMasters NumberOfMasters;
 typedef `SlaveControlAddrWidth SlaveControlAddrWidth;
-typedef `NumberOfUserTiles NumberOfUserTiles;
-typedef TAdd#(`NumberOfUserTiles,1) NumberOfTiles;
+typedef 2 NumberOfTiles;
 
 `ifndef NumReadClients
    typedef 2 NumReadClients;

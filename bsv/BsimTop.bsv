@@ -160,7 +160,7 @@ module  mkBsimTop(BsimTop);
    let single_reset <- mkReset(2, True, singleClock);
    Reset singleReset = single_reset.new_rst;
    BsimHost#(32,32,PhysAddrWidth,DataBusWidth,NumberOfMasters) host <- mkBsimHost(clocked_by singleClock, reset_by singleReset, derivedClock, derivedReset);
-   Vector#(NumberOfUserTiles,ConnectalTop) ts <- replicateM(mkConnectalTop(
+   ConnectalTop ts <- mkConnectalTop(
 `ifdef IMPORT_HOSTIF
        host,
 `else
@@ -168,7 +168,7 @@ module  mkBsimTop(BsimTop);
        host.derivedClock, host.derivedReset,
 `endif
 `endif
-       clocked_by singleClock, reset_by singleReset));
+       clocked_by singleClock, reset_by singleReset);
 
    Platform top <- mkPlatform(ts, clocked_by singleClock, reset_by singleReset);
    zipWithM_(mkConnection, top.masters, host.mem_servers, clocked_by singleClock, reset_by singleReset);

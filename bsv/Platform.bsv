@@ -98,34 +98,26 @@ module renameWrites#(Integer tile, PhysMemWriteClient#(PhysAddrWidth,DataBusWidt
    endinterface
 endmodule
 
-module mkPlatform#(Vector#(NumberOfUserTiles, ConnectalTop) tiles)(Platform);
+module mkPlatform#(ConnectalTop tiles)(Platform);
    /////////////////////////////////////////////////////////////
    // connecting up the tiles
 
-   Vector#(NumberOfUserTiles, PhysMemSlave#(18,32)) tile_slaves;
-   Vector#(NumberOfUserTiles, ReadOnly#(Bool)) tile_interrupts;
-   Vector#(NumberOfUserTiles, Vector#(NumReadClients, PhysMemReadClient#(PhysAddrWidth,DataBusWidth))) tile_read_clients;
-   Vector#(NumberOfUserTiles, Vector#(NumWriteClients, PhysMemWriteClient#(PhysAddrWidth,DataBusWidth))) tile_write_clients;
-   Vector#(NumberOfUserTiles, Vector#(NumReadClients, Integer)) read_client_tile_numbers;
-   Vector#(NumberOfUserTiles, Vector#(NumWriteClients, Integer)) write_client_tile_numbers;
-   for(Integer i = 0; i < valueOf(NumberOfUserTiles); i=i+1) begin
-      tile_slaves[i] = tiles[i].slave;
-      let imux <- mkInterruptMux(tiles[i].interrupt);
-      //ReadOnly#(Bool) imux = tiles[i].interrupt;
-      tile_interrupts[i] = imux;
-      tile_read_clients[i] = tiles[i].readers;
-      tile_write_clients[i] = tiles[i].writers;
-      read_client_tile_numbers[i] = replicate(i);
-      write_client_tile_numbers[i] = replicate(i);
-   end
-
+   PhysMemSlave#(18,32) tile_slaves = tiles.slave;
+   let imux <- mkInterruptMux(tiles.interrupt);
+   //ReadOnly#(Bool) imux = tiles.interrupt;
+   ReadOnly#(Bool) tile_interrupts = imux;
+   Vector#(NumReadClients, PhysMemReadClient#(PhysAddrWidth,DataBusWidth)) tile_read_clients = tiles.readers;
+   Vector#(NumWriteClients, PhysMemWriteClient#(PhysAddrWidth,DataBusWidth)) tile_write_clients = tiles.writers;
+   Vector#(NumReadClients, Integer) read_client_tile_numbers = replicate(0);
+   Vector#(NumWriteClients, Integer) write_client_tile_numbers = replicate(0);
+ 
    /////////////////////////////////////////////////////////////
    // framework internal portals
 
    MemServerIndicationProxy lMemServerIndicationProxy <- mkMemServerIndicationProxy(PlatformIfcNames_MemServerIndicationH2S);
 
-   Vector#(TMul#(NumberOfUserTiles,NumReadClients), PhysMemReadClient#(PhysAddrWidth,DataBusWidth)) tile_read_clients_renamed <- zipWith3M(renameReads, concat(read_client_tile_numbers), concat(tile_read_clients), replicate(lMemServerIndicationProxy.ifc));
-   Vector#(TMul#(NumberOfUserTiles,NumWriteClients), PhysMemWriteClient#(PhysAddrWidth,DataBusWidth)) tile_write_clients_renamed <- zipWith3M(renameWrites, concat(write_client_tile_numbers), concat(tile_write_clients), replicate(lMemServerIndicationProxy.ifc));
+   Vector#(NumReadClients, PhysMemReadClient#(PhysAddrWidth,DataBusWidth)) tile_read_clients_renamed <- zipWith3M(renameReads, (read_client_tile_numbers), (tile_read_clients), replicate(lMemServerIndicationProxy.ifc));
+   Vector#(NumWriteClients, PhysMemWriteClient#(PhysAddrWidth,DataBusWidth)) tile_write_clients_renamed <- zipWith3M(renameWrites, (write_client_tile_numbers), (tile_write_clients), replicate(lMemServerIndicationProxy.ifc));
    MemServer#(PhysAddrWidth,DataBusWidth,NumberOfMasters) lMemServer <- mkMemServer(tile_read_clients_renamed, tile_write_clients_renamed, lMemServerIndicationProxy.ifc);
 
    MemServerRequestWrapper lMemServerRequestWrapper <- mkMemServerRequestWrapper(PlatformIfcNames_MemServerRequestS2H, lMemServer.request);
@@ -139,13 +131,12 @@ module mkPlatform#(Vector#(NumberOfUserTiles, ConnectalTop) tiles)(Platform);
    /////////////////////////////////////////////////////////////
    // expose interface to top
 
-   PhysMemSlave#(32,32) ctrl_mux <- mkPhysMemSlaveMux(cons(framework_ctrl_mux,tile_slaves));
+   PhysMemSlave#(32,32) ctrl_mux <- mkPhysMemSlaveMux(vec(framework_ctrl_mux,tile_slaves));
    Vector#(MaxNumberOfPortals, ReadOnly#(Bool)) interrupts = replicate(interface ReadOnly; method Bool _read(); return False; endmethod endinterface);
    interrupts[0] = framework_intr;
-   for (Integer i = 1; i < valueOf(NumberOfTiles); i = i + 1)
-      interrupts[i] = tile_interrupts[i-1];
+   interrupts[1] = tile_interrupts;
    interface interrupt = interrupts;
    interface slave = ctrl_mux;
    interface masters = lMemServer.masters;
-   interface pins = tiles[0].pins;
+   interface pins = tiles.pins;
 endmodule
