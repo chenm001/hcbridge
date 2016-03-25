@@ -149,8 +149,8 @@ endinterface
 
 interface PhysMemWriteServer#(numeric type asz, numeric type dsz);
    interface Put#(PhysMemRequest#(asz,dsz)) writeReq;
-   interface Put#(MemData#(dsz))     writeData;
-   interface Get#(Bit#(MemTagSize))           writeDone;
+   interface Put#(MemData#(dsz))            writeData;
+   interface Get#(Bit#(MemTagSize))         writeDone;
 endinterface
 
 //
@@ -259,3 +259,19 @@ function  PhysMemReadClient#(addrWidth, busWidth) null_phys_mem_read_client();
               interface Put readData = null_put;
            endinterface);
 endfunction
+
+function  PhysMemWriteServer#(addrWidth, busWidth) null_phys_mem_write_server();
+   return (interface PhysMemWriteServer;
+              interface Put writeReq = null_put;
+              interface Put writeData = null_put;
+              interface Get writeDone = null_get;
+           endinterface);
+endfunction
+
+function  PhysMemReadServer#(addrWidth, busWidth) null_phys_mem_read_server();
+   return (interface PhysMemReadServer;
+              interface Put readReq = null_put;
+              interface Get readData = null_get;
+           endinterface);
+endfunction
+
