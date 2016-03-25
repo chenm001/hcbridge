@@ -34,7 +34,6 @@ import DefaultValue::*;
 
 `include "ProjectConfig.bsv"
 
-typedef Bit#(32) SGLId;
 typedef 44 MemOffsetSize;
 `ifdef MemTagSize
 typedef `MemTagSize MemTagSize;
@@ -83,28 +82,6 @@ instance DefaultValue#(PhysMemRequest#(addrWidth,dataBusWidth));
       };
 endinstance
 
-// memory request with "virtual" addresses.
-// these need to be translated before they can be send to the bus
-typedef struct {
-   SGLId sglId;
-   Bit#(MemOffsetSize) offset;
-   Bit#(BurstLenSize) burstLen;
-   Bit#(MemTagSize)  tag;
-`ifdef BYTE_ENABLES
-   Bit#(ByteEnableSize) firstbe; // maybe we only need lastbe
-   Bit#(ByteEnableSize) lastbe;
-`endif
-   } MemRequest deriving (Bits);
-
-instance DefaultValue#(MemRequest);
-   defaultValue = MemRequest {
-      sglId: 0, offset: 0, burstLen: 0, tag: 0
-`ifdef BYTE_ENABLES
-      , firstbe: maxBound, lastbe: maxBound
-`endif
-      };
-endinstance
-
 // memory payload
 typedef struct {
    Bit#(dsz) data;
@@ -125,15 +102,6 @@ instance ReqByteEnables#(PhysMemRequest#(addrWidth,dataBusWidth),TDiv#(dataBusWi
    function Bit#(TDiv#(dataBusWidth,8)) reqLastByteEnable(PhysMemRequest#(addrWidth,dataBusWidth) req); return maxBound; endfunction
 `endif
 endinstance
-instance ReqByteEnables#(MemRequest,ByteEnableSize);
-`ifdef BYTE_ENABLES
-   function Bit#(ByteEnableSize) reqFirstByteEnable(MemRequest req); return req.firstbe; endfunction
-   function Bit#(ByteEnableSize) reqLastByteEnable(MemRequest req); return req.lastbe; endfunction
-`else
-   function Bit#(ByteEnableSize) reqFirstByteEnable(MemRequest req); return maxBound; endfunction
-   function Bit#(ByteEnableSize) reqLastByteEnable(MemRequest req); return maxBound; endfunction
-`endif
-endinstance
 
 ///////////////////////////////////////////////////////////////////////////////////
 //
@@ -145,44 +113,9 @@ typedef struct {
    Bool last;
    } MemDataF#(numeric type dsz) deriving (Bits);
 
-typedef struct {
-   Bit#(MemTagSize) tag;
-   Bit#(32)         cycles;
-   } MemRequestCycles deriving (Bits);
-
 //
 ///////////////////////////////////////////////////////////////////////////////////
 
-
-///////////////////////////////////////////////////////////////////////////////////
-//
-
-interface MemReadClient#(numeric type dsz);
-   interface Get#(MemRequest)    readReq;
-   interface Put#(MemData#(dsz)) readData;
-endinterface
-
-interface MemWriteClient#(numeric type dsz);
-   interface Get#(MemRequest)    writeReq;
-   interface Get#(MemData#(dsz)) writeData;
-   interface Put#(Bit#(MemTagSize))       writeDone;
-endinterface
-
-interface MemReadServer#(numeric type dsz);
-   interface Put#(MemRequest) readReq;
-   interface Get#(MemData#(dsz))     readData;
-endinterface
-
-interface MemWriteServer#(numeric type dsz);
-   interface Put#(MemRequest) writeReq;
-   interface Put#(MemData#(dsz))     writeData;
-   interface Get#(Bit#(MemTagSize))           writeDone;
-endinterface
-
-interface MemServer#(numeric type dataWidth);
-   interface MemReadServer#(dataWidth) readServer;
-   interface MemWriteServer#(dataWidth) writeServer;
-endinterface
 
 //
 ///////////////////////////////////////////////////////////////////////////////////
@@ -222,36 +155,6 @@ endinterface
 
 //
 ///////////////////////////////////////////////////////////////////////////////////
-
-instance Connectable#(MemReadClient#(dsz), MemReadServer#(dsz));
-   module mkConnection#(MemReadClient#(dsz) source, MemReadServer#(dsz) sink)(Empty);
-      rule mr_request;
-         let req <- source.readReq.get();
-         sink.readReq.put(req);
-      endrule
-      rule mr_response;
-         let resp <- sink.readData.get();
-         source.readData.put(resp);
-      endrule
-   endmodule
-endinstance
-
-instance Connectable#(MemWriteClient#(dsz), MemWriteServer#(dsz));
-   module mkConnection#(MemWriteClient#(dsz) source, MemWriteServer#(dsz) sink)(Empty);
-      rule mw_request;
-         let req <- source.writeReq.get();
-         sink.writeReq.put(req);
-      endrule
-      rule mw_response;
-         let resp <- source.writeData.get();
-         sink.writeData.put(resp);
-      endrule
-      rule mw_done;
-         let resp <- sink.writeDone.get();
-         source.writeDone.put(resp);
-      endrule
-   endmodule
-endinstance
 
 instance Connectable#(PhysMemReadClient#(asz,dsz), PhysMemReadServer#(asz,dsz));
    module mkConnection#(PhysMemReadClient#(asz,dsz) source, PhysMemReadServer#(asz,dsz) sink)(Empty);
@@ -352,21 +255,6 @@ endfunction
 
 function  PhysMemReadClient#(addrWidth, busWidth) null_phys_mem_read_client();
    return (interface PhysMemReadClient;
-              interface Get readReq = null_get;
-              interface Put readData = null_put;
-           endinterface);
-endfunction
-
-function  MemWriteClient#(busWidth) null_mem_write_client();
-   return (interface MemWriteClient;
-              interface Get writeReq = null_get;
-              interface Get writeData = null_get;
-              interface Put writeDone = null_put;
-           endinterface);
-endfunction
-
-function  MemReadClient#(busWidth) null_mem_read_client();
-   return (interface MemReadClient;
               interface Get readReq = null_get;
               interface Put readData = null_put;
            endinterface);
