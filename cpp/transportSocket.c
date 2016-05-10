@@ -204,7 +204,7 @@ static int init_bsim(struct PortalInternal *pint, void *param)
     }
     assert(found);
     pint->map_base = (volatile unsigned int*)(long)((pint->fpga_tile * TILE_BASE_OFFSET)+(pint->fpga_number * PORTAL_BASE_OFFSET));
-    pint->item->enableint(pint, 1);
+    pint->transport->enableint(pint, 1);
 
     return 0;
 }

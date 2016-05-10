@@ -50,7 +50,7 @@ PortalInternal *utility_portal = 0x0;
  * Initialize control data structure for portal
  */
 void init_portal_internal(PortalInternal *pint, int id, int tile,
-    PORTAL_INDFUNC handler, void *cb, PortalTransportFunctions *item, void *param, void *parent,
+    PORTAL_INDFUNC handler, void *cb, PortalTransportFunctions *transport, void *param, void *parent,
     uint32_t reqinfo)
 {
     int rc;
@@ -67,16 +67,16 @@ void init_portal_internal(PortalInternal *pint, int id, int tile,
     pint->reqinfo = reqinfo;
     if(trace_portal)
         PORTAL_PRINTF("%s: **initialize portal_%d_%d handler %p cb %p parent %p\n", __FUNCTION__, pint->fpga_tile, pint->fpga_number, handler, cb, parent);
-    if (!item) {
+    if (!transport) {
         // Use defaults for transport handling methods
 #ifdef BOARD_bluesim
-        item = &transportBsim;
+        transport = &transportBsim;
 #else
     #error Unsupport mode
 #endif
     }
-    pint->item = item;
-    rc = pint->item->init(pint, param);
+    pint->transport = transport;
+    rc = pint->transport->init(pint, param);
     if (rc != 0) {
         PORTAL_PRINTF("%s: failed to initialize Portal portal_%d_%d\n", __FUNCTION__, pint->fpga_tile, pint->fpga_number);
         exit(1);
